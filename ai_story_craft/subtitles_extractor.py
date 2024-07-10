@@ -24,14 +24,11 @@ def extract_subtitles(video_path: Path, output_path: Path):
 
 def write_srt(transcript: Iterator[dict], file: TextIO):
     for i, segment in enumerate(transcript, start=1):
-        print(
-            f"{i}\n"
-            f"{format_timestamp(segment['start'], always_include_hours=True)} --> "
-            f"{format_timestamp(segment['end'], always_include_hours=True)}\n"
-            f"{segment['text'].strip().replace('-->', '->')}\n",
-            file=file,
-            flush=True,
-        )
+        start_time = format_timestamp(segment['start'], always_include_hours=True)
+        end_time = format_timestamp(segment['end'], always_include_hours=True)
+        text = segment['text'].strip().replace('-->', '->')
+        file.write(f"{i}\n{start_time} --> {end_time}\n{text}\n")
+    file.flush()
 
 
 def format_timestamp(seconds: float, always_include_hours: bool = False):
