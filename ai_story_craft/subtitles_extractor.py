@@ -1,0 +1,51 @@
+import os
+import ffmpeg
+import tempfile
+import whisper
+from typing import Iterator, TextIO
+from pathlib import Path
+
+
+def extract_subtitles(video_path: Path, output_path: Path):
+    model = whisper.load_model()  # TODO find which model to use
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        audio_path = Path(temp_dir, video_path.stem + '.wav')
+        ffmpeg.input(video_path).output(
+            audio_path,
+            acodec="pcm_s16le", ac=1, ar="16k"
+        ).run(quiet=True, overwrite_output=True)
+
+        result = model.transcribe(audio_path)
+
+        with open(output_path, "w", encoding="utf-8") as srt:
+            write_srt(result["segments"], file=srt)
+
+
+def write_srt(transcript: Iterator[dict], file: TextIO):
+    for i, segment in enumerate(transcript, start=1):
+        print(
+            f"{i}\n"
+            f"{format_timestamp(segment['start'], always_include_hours=True)} --> "
+            f"{format_timestamp(segment['end'], always_include_hours=True)}\n"
+            f"{segment['text'].strip().replace('-->', '->')}\n",
+            file=file,
+            flush=True,
+        )
+
+
+def format_timestamp(seconds: float, always_include_hours: bool = False):
+    assert seconds >= 0, "non-negative timestamp expected"
+    milliseconds = round(seconds * 1000.0)
+
+    hours = milliseconds // 3_600_000
+    milliseconds -= hours * 3_600_000
+
+    minutes = milliseconds // 60_000
+    milliseconds -= minutes * 60_000
+
+    seconds = milliseconds // 1_000
+    milliseconds -= seconds * 1_000
+
+    hours_marker = f"{hours:02d}:" if always_include_hours or hours > 0 else ""
+    return f"{hours_marker}{minutes:02d}:{seconds:02d},{milliseconds:03d}"
