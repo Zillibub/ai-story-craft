@@ -4,10 +4,11 @@ import tempfile
 import whisper
 from typing import Iterator, TextIO
 from pathlib import Path
+from core.settings import settings
 
 
 def extract_subtitles(video_path: Path, output_path: Path):
-    model = whisper.load_model()  # TODO find which model to use
+    model = whisper.load_model(settings.whisper_model)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         audio_path = Path(temp_dir, video_path.stem + '.wav')
