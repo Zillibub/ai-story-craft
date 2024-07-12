@@ -12,13 +12,13 @@ def extract_subtitles(video_path: Path, output_path: Path):
     model = whisper.load_model(settings.whisper_model)
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        audio_path = Path(temp_dir, video_path.stem + '.wav')
+        audio_path = str(Path(temp_dir, video_path.stem + '.wav'))
         ffmpeg.input(str(video_path)).output(
-            str(audio_path),
+            audio_path,
             acodec="pcm_s16le", ac=1, ar="16k"
         ).run(quiet=True, overwrite_output=True)
 
-        result = model.transcribe(str(audio_path))
+        result = model.transcribe(audio_path)
 
         with open(output_path, "w", encoding="utf-8") as srt:
             write_srt(result["segments"], file=srt)
