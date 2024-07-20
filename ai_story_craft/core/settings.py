@@ -8,4 +8,4 @@ class Settings(BaseSettings):
     openai_api_key: str
 
 
-settings = Settings(_env_file='.env')
+settings = Settings(_env_file='../.env')

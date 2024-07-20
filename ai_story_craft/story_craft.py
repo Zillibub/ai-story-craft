@@ -11,7 +11,7 @@ class StoryCraft:
     def evaluate(self):
         if not self.work_directory.exists():
             self.work_directory.mkdir()
-        extract_subtitles(self.video_path, self.work_directory / 'subtitles.srt')
+        extract_subtitles(self.video_path, self.work_directory / 'subtitles.txt')
 
 
 if __name__ == '__main__':
