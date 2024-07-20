@@ -2,6 +2,8 @@ import openai
 from pathlib import Path
 from core.settings import settings
 from openai.resources.beta.assistants import Assistant
+from openai.types.beta.file_search_tool import FileSearch
+from openai.types.beta.file_search_tool_param import FileSearchToolParam
 
 
 def create_assistant(
@@ -33,5 +35,6 @@ def create_assistant(
         Create the user story based only on provided information without adding any additional details. 
         """,
         tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
+        tools=[{"type": "file_search"}]
     )
     return assistant
