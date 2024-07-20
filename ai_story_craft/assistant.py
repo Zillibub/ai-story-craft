@@ -1,6 +1,5 @@
 import openai
 from pathlib import Path
-from dataclasses import dataclass
 from core.settings import settings
 
 
