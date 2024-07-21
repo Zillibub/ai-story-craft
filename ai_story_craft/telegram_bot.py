@@ -16,7 +16,7 @@ from db.chat_log import ChatLog
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
 
-engine = create_engine(settings.USER_LOGS_DB, echo=True)
+engine = create_engine(settings.database_url, echo=True)
 
 Session = sessionmaker(bind=engine)
 openai_client = openai.Client(api_key=settings.openai_api_key)

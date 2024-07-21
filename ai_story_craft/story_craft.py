@@ -1,4 +1,5 @@
 from pathlib import Path
+from assistant import create_assistant
 from subtitles_extractor import extract_subtitles
 
 
@@ -11,7 +12,12 @@ class StoryCraft:
     def evaluate(self):
         if not self.work_directory.exists():
             self.work_directory.mkdir()
-        extract_subtitles(self.video_path, self.work_directory / 'subtitles.txt')
+
+        subtitles_path = self.work_directory / 'subtitles.txt'
+        if not subtitles_path.exists():
+            extract_subtitles(self.video_path, subtitles_path)
+
+        assistant = create_assistant(name='assistant_1', subtitle_file=subtitles_path)
 
 
 if __name__ == '__main__':
