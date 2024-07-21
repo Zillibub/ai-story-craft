@@ -21,6 +21,8 @@ engine = create_engine(settings.USER_LOGS_DB, echo=True)
 Session = sessionmaker(bind=engine)
 openai_client = openai.Client(api_key=settings.openai_api_key)
 
+# Chat threads dictionary
+
 chat_threads = {}
 
 
