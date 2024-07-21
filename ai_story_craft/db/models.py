@@ -18,8 +18,8 @@ class Assistant(Base):
     __tablename__ = 'assistants'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    external_id = Column(String, nullable=False)
     name = Column(String, nullable=False)
-    model = Column(String, nullable=False)
     created_at = Column(DateTime, default=func.now())
 
 

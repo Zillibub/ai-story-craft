@@ -1,10 +1,11 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
+from core.settings import settings
 
-engine = create_engine('sqlite:///your_database.db')
+engine = create_engine(settings.database_url, echo=True)
 session_factory = sessionmaker(bind=engine)
 Session = scoped_session(session_factory)
+
 
 class CRUD:
     def __init__(self, model):

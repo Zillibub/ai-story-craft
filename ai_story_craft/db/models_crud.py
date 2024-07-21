@@ -1,4 +1,4 @@
-from db.base_crud import CRUD, Session
+from db.base_crud import CRUD
 from db.models import User, Assistant, ActiveAssistant, Message
 
 

@@ -1,6 +1,7 @@
 from pathlib import Path
 from assistant import create_assistant
 from subtitles_extractor import extract_subtitles
+from db.models_crud import AssistantCRUD
 
 
 class StoryCraft:
@@ -18,6 +19,7 @@ class StoryCraft:
             extract_subtitles(self.video_path, subtitles_path)
 
         assistant = create_assistant(name='assistant_1', subtitle_file=subtitles_path)
+        AssistantCRUD().create(external_id=assistant.id, name=assistant.name)
 
 
 if __name__ == '__main__':
