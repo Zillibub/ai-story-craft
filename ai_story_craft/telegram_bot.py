@@ -27,7 +27,7 @@ chat_threads = {}
 
 
 def log_question_and_answer(external_chat_id, question, answer):
-    session = Session()
+    """Log the question and answer in the database."""
     chat = ChatCRUD().get_by_external_id(external_chat_id)
     if not chat:
         raise ValueError(f"Chat with id {external_chat_id} not found")
@@ -36,8 +36,16 @@ def log_question_and_answer(external_chat_id, question, answer):
 
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    if update.message.chat_id not in chat_threads.keys():
-        chat_threads[update.message.chat_id] = openai_client.beta.threads.create().id
+    chat = ChatCRUD().get_by_external_id(update.message.chat_id)
+    if chat is None:
+        chat = ChatCRUD().create(chat_id=update.message.chat)
+
+    if chat.openai_thread_id is None:
+        openai_thread_id = openai_client.beta.threads.create().id
+        chat = ChatCRUD().update(chat.id, openai_thread_id=openai_thread_id)
+
+        if not chat:
+            raise ValueError(f"Chat with id {update.message.chat_id} not found")
 
     question = update.message.text
 

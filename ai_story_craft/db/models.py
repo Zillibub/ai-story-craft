@@ -11,6 +11,7 @@ class Chat(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(String, nullable=False)
+    openai_thread_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now())
     chat_type = Column(Enum('telegram', name='chat_types'), default='telegram')
 
