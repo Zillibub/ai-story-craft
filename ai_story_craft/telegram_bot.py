@@ -11,7 +11,7 @@ import openai
 from collections import deque, defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from db.chat_log import ChatLog
+from db.models_crud import MessageCRUD, ChatCRUD
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -26,14 +26,12 @@ openai_client = openai.Client(api_key=settings.openai_api_key)
 chat_threads = {}
 
 
-def log_question_and_answer(chat_id, question, answer):
+def log_question_and_answer(external_chat_id, question, answer):
     session = Session()
-
-    chat_log = ChatLog(chat_id=chat_id, question=question, answer=answer)
-    session.add(chat_log)
-    session.commit()
-
-    session.close()
+    chat = ChatCRUD().get_by_external_id(external_chat_id)
+    if not chat:
+        raise ValueError(f"Chat with id {external_chat_id} not found")
+    chat_log = MessageCRUD().create(chat_id=chat.id, question=question, answer=answer)
 
 
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):

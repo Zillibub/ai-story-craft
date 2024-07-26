@@ -1,10 +1,15 @@
 from db.base_crud import CRUD
-from db.models import User, Assistant, ActiveAssistant, Message
+from db.models import Chat, Assistant, ActiveAssistant, Message
 
 
-class UserCRUD(CRUD):
+class ChatCRUD(CRUD):
     def __init__(self):
-        super().__init__(User)
+        super().__init__(Chat)
+
+    def get_by_external_id(self, chat_id):
+        with self.scoped_session() as session:
+            instance = session.query(self.model).filter_by(chat_id=chat_id).first()
+        return instance
 
 
 class AssistantCRUD(CRUD):

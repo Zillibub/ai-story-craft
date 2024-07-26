@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, CheckConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, CheckConstraint, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
@@ -6,12 +6,13 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 
-class User(Base):
-    __tablename__ = 'users'
+class Chat(Base):
+    __tablename__ = 'chats'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String, nullable=False)
+    chat_id = Column(String, nullable=False)
     created_at = Column(DateTime, default=func.now())
+    chat_type = Column(Enum('telegram', name='chat_types'), default='telegram')
 
 
 class Assistant(Base):
@@ -39,11 +40,11 @@ class Message(Base):
     __tablename__ = 'messages'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
+    chat_id = Column(Integer, ForeignKey('chats.id'))
     assistant_id = Column(Integer, ForeignKey('assistants.id'))
     message = Column(String, nullable=False)
     direction = Column(String, CheckConstraint("direction IN ('incoming', 'outgoing')"))
     created_at = Column(DateTime, default=func.now())
 
-    user = relationship('User')
+    chat = relationship('Chat')
     assistant = relationship('Assistant')
