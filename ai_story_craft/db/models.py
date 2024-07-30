@@ -29,11 +29,11 @@ class ActiveAssistant(Base):
     __tablename__ = 'active_assistants'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
+    chat_id = Column(Integer, ForeignKey('chats.id'))
     assistant_id = Column(Integer, ForeignKey('assistants.id'))
     activated_at = Column(DateTime, default=func.now())
 
-    user = relationship('User')
+    chat = relationship('Chat')
     assistant = relationship('Assistant')
 
 

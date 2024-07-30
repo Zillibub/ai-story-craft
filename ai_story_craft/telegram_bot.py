@@ -11,7 +11,7 @@ import openai
 from collections import deque, defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from db.models_crud import MessageCRUD, ChatCRUD
+from db.models_crud import MessageCRUD, ChatCRUD, AssistantCRUD, ActiveAssistantCRUD
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -36,6 +36,12 @@ def log_question_and_answer(external_chat_id, question, answer):
 
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
+
+    if assistant is None:
+        await update.message.reply_text("No assistant is currently active. Please activate an assistant first.")
+        return
+
     chat = ChatCRUD().get_by_external_id(update.message.chat_id)
     if chat is None:
         chat = ChatCRUD().create(chat_id=update.message.chat)
@@ -53,6 +59,15 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply = result.data[0].content[0].text.value
     log_question_and_answer(update.message.chat_id, question, reply)
     await update.message.reply_text(reply)
+
+
+async def get_assistants(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    assistants = AssistantCRUD().get_list()
+    assistants_list = []
+    for assistant in assistants.data:
+        assistants_list.append(assistant.name)
+    await update.message.reply_text(assistants_list)
 
 
 async def openai_answer(question, assistant_id, thread_id):

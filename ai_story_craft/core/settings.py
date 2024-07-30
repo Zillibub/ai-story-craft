@@ -7,5 +7,7 @@ class Settings(BaseSettings):
     openai_api_key: str
     database_url: str
 
+    telegram_bot_token: str
+
 
 settings = Settings(_env_file='../.env')
