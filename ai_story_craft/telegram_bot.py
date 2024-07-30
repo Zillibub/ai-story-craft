@@ -4,6 +4,7 @@ from telegram.ext import (
     Application,
     ContextTypes,
     MessageHandler,
+    CommandHandler,
     filters,
 )
 import time
@@ -64,10 +65,33 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_assistants(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     assistants = AssistantCRUD().get_list()
-    assistants_list = []
-    for assistant in assistants.data:
-        assistants_list.append(assistant.name)
-    await update.message.reply_text(assistants_list)
+    reply = "Available assistants:\n" + "\t\n".join([assistant.name for assistant in assistants])
+    await update.message.reply_text(reply)
+
+
+async def get_active_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    active_assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
+
+    if active_assistant:
+        await update.message.reply_text(f"Active assistant: {active_assistant.assistant.name}")
+    else:
+        await update.message.reply_text("No active assistant.")
+
+
+async def activate_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    assistant_name = context.args[0]
+    assistant = AssistantCRUD().get_by_name(assistant_name)
+    if assistant is None:
+        await update.message.reply_text(f"Assistant {assistant_name} not found.")
+        return
+
+    active_assistant = ActiveAssistantCRUD().activate_assistant(update.message.chat_id, assistant.id)
+
+    if active_assistant:
+        await update.message.reply_text(f"Assistant {assistant_name} activated.")
+    else:
+        await update.message.reply_text(f"Error activating assistant {assistant_name}.")
 
 
 async def openai_answer(question, assistant_id, thread_id):
@@ -98,7 +122,9 @@ async def openai_answer(question, assistant_id, thread_id):
 def main():
     application = Application.builder().token(settings.telegram_bot_token).build()
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^Ingest"), answer))
-
+    application.add_handler(CommandHandler("assistants", get_assistants, has_args=False))
+    application.add_handler(CommandHandler("activate", activate_assistant, has_args=True))
+    application.add_handler(CommandHandler("active", get_active_assistant, has_args=False))
     application.run_polling()
 
 

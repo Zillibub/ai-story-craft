@@ -21,7 +21,7 @@ class Assistant(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     external_id = Column(String, nullable=False)
-    name = Column(String, nullable=False)
+    name = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, default=func.now())
 
 

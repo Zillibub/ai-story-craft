@@ -21,10 +21,30 @@ class AssistantCRUD(CRUD):
             instances = session.query(self.model).limit(page_size).offset(page_size * (page_number - 1)).all()
         return instances
 
+    def get_by_name(self, name: str):
+        with self.scoped_session() as session:
+            instance = session.query(self.model).filter_by(name=name).first()
+        return instance
+
 
 class ActiveAssistantCRUD(CRUD):
     def __init__(self):
         super().__init__(ActiveAssistant)
+
+    def activate_assistant(self, chat_id: int, assistant_id: int):
+        with self.scoped_session() as session:
+            instance = session.query(self.model).filter_by(chat_id=chat_id).first()
+            if instance is None:
+                instance = self.model(chat_id=chat_id, assistant_id=assistant_id)
+                session.add(instance)
+            else:
+                instance.assistant_id = assistant_id
+        return instance
+
+    def get_by_chat_id(self, chat_id: int):
+        with self.scoped_session() as session:
+            instance = session.query(self.model).filter_by(chat_id=chat_id).first()
+        return instance
 
     def get_active_assistant(self, chat_id: int):
         with self.scoped_session() as session:
