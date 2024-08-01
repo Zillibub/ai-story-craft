@@ -60,14 +60,14 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat.openai_thread_id
     )
 
+    reply = result.data[0].content[0].text.value
+
     MessageCRUD().create(
         chat_id=chat.id,
         assistant_id=active_assistant.assistant_id,
-        message=result,
+        message=reply,
         direction='outgoing'
     )
-
-    reply = result.data[0].content[0].text.value
 
     await update.message.reply_text(reply)
 
