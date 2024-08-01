@@ -1,4 +1,5 @@
 from db.base_crud import CRUD
+from sqlalchemy.orm import selectinload
 from db.models import Chat, Assistant, ActiveAssistant, Message
 
 
@@ -32,13 +33,13 @@ class ActiveAssistantCRUD(CRUD):
         super().__init__(ActiveAssistant)
 
     def activate_assistant(self, chat_id: int, assistant_id: int):
-        with self.scoped_session() as session:
-            instance = session.query(self.model).filter_by(chat_id=chat_id).first()
+        with self.scoped_session().begin():
+            instance = self.scoped_session.query(self.model).filter_by(chat_id=chat_id).first()
             if instance is None:
                 instance = self.model(chat_id=chat_id, assistant_id=assistant_id)
-                session.add(instance)
             else:
                 instance.assistant_id = assistant_id
+            self.scoped_session.add(instance)
         return instance
 
     def get_by_chat_id(self, chat_id: int):
@@ -48,7 +49,8 @@ class ActiveAssistantCRUD(CRUD):
 
     def get_active_assistant(self, chat_id: int):
         with self.scoped_session() as session:
-            instance = session.query(self.model).filter_by(chat_id=chat_id).first()
+            instance = session.query(self.model).filter_by(chat_id=chat_id).options(
+                selectinload(self.model.assistant)).first()
         return instance
 
 
