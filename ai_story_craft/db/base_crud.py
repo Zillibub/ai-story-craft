@@ -24,8 +24,8 @@ class CRUD:
         return instance
 
     def update(self, id, **kwargs):
-        with self.scoped_session.begin():
-            instance = self.scoped_session.query(self.model).filter_by(id=id).first()
+        with self.scoped_session() as session:
+            instance = session.query(self.model).filter_by(id=id).first()
             if instance:
                 for attr, value in kwargs.items():
                     setattr(instance, attr, value)

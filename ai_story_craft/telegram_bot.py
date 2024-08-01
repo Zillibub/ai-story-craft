@@ -13,6 +13,7 @@ from collections import deque, defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from db.models_crud import MessageCRUD, ChatCRUD, AssistantCRUD, ActiveAssistantCRUD
+from db.models import Chat
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -26,26 +27,16 @@ openai_client = openai.Client(api_key=settings.openai_api_key)
 
 chat_threads = {}
 
-
-def log_question_and_answer(external_chat_id, question, answer):
-    """Log the question and answer in the database."""
-    chat = ChatCRUD().get_by_external_id(external_chat_id)
-    if not chat:
-        raise ValueError(f"Chat with id {external_chat_id} not found")
-    chat_log = MessageCRUD().create(chat_id=chat.id, question=question, answer=answer)
-
-
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    active_assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
 
-    assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
-
-    if assistant is None:
+    if active_assistant is None:
         await update.message.reply_text("No assistant is currently active. Please activate an assistant first.")
         return
 
     chat = ChatCRUD().get_by_external_id(update.message.chat_id)
     if chat is None:
-        chat = ChatCRUD().create(chat_id=update.message.chat)
+        chat = ChatCRUD().create(chat_id=update.message.chat_id)
 
     if chat.openai_thread_id is None:
         openai_thread_id = openai_client.beta.threads.create().id
@@ -56,14 +47,32 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     question = update.message.text
 
-    result = await openai_answer(question, settings.assistant_id, chat_threads[update.message.chat_id])
+    MessageCRUD().create(
+        chat_id=chat.id,
+        assistant_id=active_assistant.assistant_id,
+        message=question,
+        direction='incoming'
+    )
+
+    result = await openai_answer(
+        question,
+        active_assistant.assistant.external_id,
+        chat.openai_thread_id
+    )
+
+    MessageCRUD().create(
+        chat_id=chat.id,
+        assistant_id=active_assistant.assistant_id,
+        message=result,
+        direction='outgoing'
+    )
+
     reply = result.data[0].content[0].text.value
-    log_question_and_answer(update.message.chat_id, question, reply)
+
     await update.message.reply_text(reply)
 
 
 async def get_assistants(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     assistants = AssistantCRUD().get_list()
     reply = "Available assistants:\n" + "\t\n".join([assistant.name for assistant in assistants])
     await update.message.reply_text(reply)
@@ -79,7 +88,6 @@ async def get_active_assistant(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def activate_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     assistant_name = context.args[0]
     assistant = AssistantCRUD().get_by_name(assistant_name)
     if assistant is None:
@@ -95,7 +103,6 @@ async def activate_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def openai_answer(question, assistant_id, thread_id):
-
     openai_client.beta.threads.messages.create(
         thread_id=thread_id,
         content=question,
