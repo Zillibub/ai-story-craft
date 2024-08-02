@@ -8,12 +8,11 @@ from telegram.ext import (
     filters,
 )
 import time
-import openai
+from langfuse.openai import openai
 from collections import deque, defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from db.models_crud import MessageCRUD, ChatCRUD, AssistantCRUD, ActiveAssistantCRUD
-from db.models import Chat
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
