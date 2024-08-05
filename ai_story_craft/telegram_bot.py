@@ -7,11 +7,15 @@ from telegram.ext import (
     CommandHandler,
     filters,
 )
+import logging
 import time
+import os
 from langfuse.openai import openai
+from langfuse.decorators import observe
 from collections import deque, defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from langfuse.decorators import langfuse_context
 from db.models_crud import MessageCRUD, ChatCRUD, AssistantCRUD, ActiveAssistantCRUD
 
 # Conversation history dictionary
@@ -20,12 +24,20 @@ conversation_history = defaultdict(lambda: deque(maxlen=10))
 engine = create_engine(settings.database_url, echo=True)
 
 Session = sessionmaker(bind=engine)
-openai_client = openai.Client(api_key=settings.openai_api_key)
 
-# Chat threads dictionary
+os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY
+os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
+os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
 
-chat_threads = {}
+openai.langfuse_public_key = settings.LANGFUSE_PUBLIC_KEY
+openai.langfuse_secret_key = settings.LANGFUSE_SECRET_KEY
+openai.langfuse_enabled = True
+openai.langfuse_host = settings.LANGFUSE_HOST
+openai.api_key = settings.openai_api_key
 
+langfuse_context._get_langfuse().log.setLevel(logging.DEBUG)
+
+@observe()
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     active_assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
 
@@ -38,7 +50,7 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat = ChatCRUD().create(chat_id=update.message.chat_id)
 
     if chat.openai_thread_id is None:
-        openai_thread_id = openai_client.beta.threads.create().id
+        openai_thread_id = openai.beta.threads.create().id
         chat = ChatCRUD().update(chat.id, openai_thread_id=openai_thread_id)
 
         if not chat:
@@ -67,6 +79,17 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message=reply,
         direction='outgoing'
     )
+
+    langfuse_client = langfuse_context._get_langfuse()
+    # pass trace_id and current observation ids to the newly created child generation
+    langfuse_client.generation(
+        trace_id=langfuse_context.get_current_trace_id(),
+        parent_observation_id=langfuse_context.get_current_observation_id(),
+        input=question,
+        output=result
+    )
+
+    langfuse_context.flush()
 
     await update.message.reply_text(reply)
 
@@ -101,25 +124,26 @@ async def activate_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(f"Error activating assistant {assistant_name}.")
 
 
+@observe()
 async def openai_answer(question, assistant_id, thread_id):
-    openai_client.beta.threads.messages.create(
+    openai.beta.threads.messages.create(
         thread_id=thread_id,
         content=question,
         role="user"
     )
-    run = openai_client.beta.threads.runs.create(
+    run = openai.beta.threads.runs.create(
         thread_id=thread_id,
         assistant_id=assistant_id,
         # instructions=question
     )
     while run.status == "queued" or run.status == "in_progress":
-        run = openai_client.beta.threads.runs.retrieve(
+        run = openai.beta.threads.runs.retrieve(
             thread_id=thread_id,
             run_id=run.id,
         )
         time.sleep(0.2)
 
-    messages = openai_client.beta.threads.messages.list(
+    messages = openai.beta.threads.messages.list(
         thread_id=thread_id
     )
     return messages
