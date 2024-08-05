@@ -29,13 +29,10 @@ os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY
 os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
 os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
 
-openai.langfuse_public_key = settings.LANGFUSE_PUBLIC_KEY
-openai.langfuse_secret_key = settings.LANGFUSE_SECRET_KEY
-openai.langfuse_enabled = True
-openai.langfuse_host = settings.LANGFUSE_HOST
 openai.api_key = settings.openai_api_key
 
 langfuse_context._get_langfuse().log.setLevel(logging.DEBUG)
+
 
 @observe()
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -55,6 +52,10 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not chat:
             raise ValueError(f"Chat with id {update.message.chat_id} not found")
+
+    langfuse_context.update_current_trace(
+        user_id=update.message.chat_id
+    )
 
     question = update.message.text
 
@@ -79,17 +80,6 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message=reply,
         direction='outgoing'
     )
-
-    langfuse_client = langfuse_context._get_langfuse()
-    # pass trace_id and current observation ids to the newly created child generation
-    langfuse_client.generation(
-        trace_id=langfuse_context.get_current_trace_id(),
-        parent_observation_id=langfuse_context.get_current_observation_id(),
-        input=question,
-        output=result
-    )
-
-    langfuse_context.flush()
 
     await update.message.reply_text(reply)
 
