@@ -7,7 +7,6 @@ from telegram.ext import (
     CommandHandler,
     filters,
 )
-import logging
 import time
 import os
 from langfuse.openai import openai
@@ -16,7 +15,7 @@ from collections import deque, defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from langfuse.decorators import langfuse_context
-from db.models_crud import MessageCRUD, ChatCRUD, AssistantCRUD, ActiveAssistantCRUD
+from db.models_crud import ChatCRUD, AssistantCRUD, ActiveAssistantCRUD
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -30,8 +29,6 @@ os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
 os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
 
 openai.api_key = settings.openai_api_key
-
-langfuse_context._get_langfuse().log.setLevel(logging.DEBUG)
 
 
 @observe()
@@ -58,28 +55,12 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     question = update.message.text
-
-    MessageCRUD().create(
-        chat_id=chat.id,
-        assistant_id=active_assistant.assistant_id,
-        message=question,
-        direction='incoming'
-    )
-
     result = await openai_answer(
         question,
         active_assistant.assistant.external_id,
         chat.openai_thread_id
     )
-
     reply = result.data[0].content[0].text.value
-
-    MessageCRUD().create(
-        chat_id=chat.id,
-        assistant_id=active_assistant.assistant_id,
-        message=reply,
-        direction='outgoing'
-    )
 
     await update.message.reply_text(reply)
 
