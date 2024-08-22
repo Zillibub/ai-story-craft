@@ -29,8 +29,13 @@ def create_assistant(
     assistant = client.beta.assistants.create(
         model=settings.assistant_model,
         name=name,
-        instructions="""You are a senior product manager who creates a user story for a new feature.
-        Create the user story based only on provided information without adding any additional details. 
+        instructions="""You are a senior product manager who analyses the product videos.
+        You will be provided with a video subtitles. Use only the provided information to answer the user's questions.
+        Use the following formatting in our answers: 
+        <b>text</b> - Bold text, <i>text</i> - Italicize text, <u>text</u> - Underline text, 
+        <s>text</s> - Strikethrough text, <code>text</code> - highlight part of a piece of code
+        <tg-spoiler>text</tg-spoiler> - spoiler formatting that hides the selected text
+        <a href="http://www.example.com/">text</a>	Creates a hyperlink to the selected text
         """,
         tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
         tools=[{"type": "file_search"}]

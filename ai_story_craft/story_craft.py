@@ -13,7 +13,7 @@ class StoryCraft:
 
         self.work_directory.mkdir(exist_ok=True)
 
-    def evaluate(self):
+    def evaluate(self, assistant_name: str = None):
         if not self.work_directory.exists():
             self.work_directory.mkdir()
 
@@ -21,7 +21,10 @@ class StoryCraft:
         if not subtitles_path.exists():
             extract_subtitles(self.video_path, subtitles_path)
 
-        assistant = create_assistant(name='assistant_1', subtitle_file=subtitles_path)
+        assistant = create_assistant(
+            name=assistant_name or f"assistant_{self.work_directory.name}",
+            subtitle_file=subtitles_path
+        )
         AssistantCRUD().create(external_id=assistant.id, name=assistant.name)
 
 
@@ -32,6 +35,7 @@ if __name__ == '__main__':
                         help='Path to the video file')
     parser.add_argument('-d', '--work_directory', type=str, required=True,
                         help='Path to the output working directory')
+    parser.add_argument('-a', '--assistant_name', type=str, required=False,
+                        help='Path to the output working directory')
     args = parser.parse_args()
-
-    StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate()
+    StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate(assistant_name=args.assistant_name)
