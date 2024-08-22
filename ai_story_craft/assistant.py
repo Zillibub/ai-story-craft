@@ -2,8 +2,6 @@ import openai
 from pathlib import Path
 from core.settings import settings
 from openai.resources.beta.assistants import Assistant
-from openai.types.beta.file_search_tool import FileSearch
-from openai.types.beta.file_search_tool_param import FileSearchToolParam
 
 
 def create_assistant(

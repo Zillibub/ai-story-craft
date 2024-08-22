@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 from assistant import create_assistant
 from subtitles_extractor import extract_subtitles
@@ -9,6 +10,8 @@ class StoryCraft:
     def __init__(self, video_path: Path, work_directory: Path):
         self.work_directory = work_directory
         self.video_path = video_path
+
+        self.work_directory.mkdir(exist_ok=True)
 
     def evaluate(self):
         if not self.work_directory.exists():
@@ -23,7 +26,12 @@ class StoryCraft:
 
 
 if __name__ == '__main__':
-    video_path = Path('../../data/jupyter_notebook_tutorial.mp4')
-    work_directory = Path('../../data/short')
-    work_directory.mkdir(exist_ok=True)
-    StoryCraft(video_path, work_directory).evaluate()
+
+    parser = argparse.ArgumentParser(description='Creates assistant')
+    parser.add_argument('-v', '--video_path', type=str, required=True,
+                        help='Path to the video file')
+    parser.add_argument('-d', '--work_directory', type=str, required=True,
+                        help='Path to the output working directory')
+    args = parser.parse_args()
+
+    StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate()
