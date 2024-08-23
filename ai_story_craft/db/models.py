@@ -43,8 +43,10 @@ class Message(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(Integer, ForeignKey('chats.id'))
     assistant_id = Column(Integer, ForeignKey('assistants.id'))
+
+    session_id = Column(String, nullable=False)
     message = Column(String, nullable=False)
-    direction = Column(String, CheckConstraint("direction IN ('incoming', 'outgoing')"))
+    direction = Column(String)
     created_at = Column(DateTime, default=func.now())
 
     chat = relationship('Chat')

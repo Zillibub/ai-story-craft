@@ -5,10 +5,16 @@ from sqlalchemy import pool
 
 from alembic import context
 from ai_story_craft.db import models
+import os
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+section = config.config_ini_section
+config.set_section_option(section, "DB_USER", os.environ.get("POSTGRES_USER"))
+config.set_section_option(section, "DB_PASS", os.environ.get("POSTGRES_PASSWORD"))
+config.set_section_option(section, "DB_NAME", os.environ.get("POSTGRES_DB"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -45,6 +51,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True
     )
 
     with context.begin_transaction():
@@ -66,7 +73,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, render_as_batch=True
         )
 
         with context.begin_transaction():

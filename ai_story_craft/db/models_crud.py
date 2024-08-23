@@ -1,6 +1,11 @@
-from db.base_crud import CRUD
+from db.base_crud import CRUD, engine
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from db.models import Chat, Assistant, ActiveAssistant, Message
+
+
+def now():
+    return func.current_timestamp(bind=engine)
 
 
 class ChatCRUD(CRUD):
@@ -57,3 +62,18 @@ class ActiveAssistantCRUD(CRUD):
 class MessageCRUD(CRUD):
     def __init__(self):
         super().__init__(Message)
+
+    def get_last_interaction(self, chat_id: int):
+        with self.scoped_session() as session:
+            instance = session.query(self.model).filter_by(chat_id=chat_id).order_by(self.model.id.desc()).first()
+        return instance
+
+    def get_last_session(self, chat_id: int):
+        with self.scoped_session() as session:
+            instance = session.query(self.model).filter_by(chat_id=chat_id).order_by(self.model.id.desc()).first()
+        return instance
+
+    def get_session_messages(self, session_id: int):
+        with self.scoped_session() as session:
+            instances = session.query(self.model).filter_by(session_id=session_id).all()
+        return instances

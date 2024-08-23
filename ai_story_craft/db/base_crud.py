@@ -2,7 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from core.settings import settings
 
-engine = create_engine(settings.database_url, echo=True)
+engine = create_engine(
+    f'postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@localhost:5423/{settings.POSTGRES_DB}', echo=True)
 session_factory = sessionmaker(bind=engine)
 scoped_session = scoped_session(session_factory)
 

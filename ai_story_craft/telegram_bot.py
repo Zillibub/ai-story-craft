@@ -1,5 +1,5 @@
 from core.settings import settings
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import (
     Application,
     ContextTypes,
@@ -9,20 +9,17 @@ from telegram.ext import (
 )
 import time
 import os
+from uuid import uuid4
 from langfuse.openai import openai
 from langfuse.decorators import observe
 from collections import deque, defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from langfuse.decorators import langfuse_context
-from db.models_crud import ChatCRUD, AssistantCRUD, ActiveAssistantCRUD
+from db.models_crud import ChatCRUD, AssistantCRUD, ActiveAssistantCRUD, MessageCRUD, now
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
-
-engine = create_engine(settings.database_url, echo=True)
-
-Session = sessionmaker(bind=engine)
 
 os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY
 os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
@@ -50,11 +47,20 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not chat:
             raise ValueError(f"Chat with id {update.message.chat_id} not found")
 
+    if now() - MessageCRUD().get_last_interaction(chat.id) > settings.new_session_timeout:
+        session_id = uuid4()
+    else:
+        session_id = MessageCRUD().get_last_session(chat.id).id
+
     langfuse_context.update_current_trace(
-        user_id=update.message.chat_id
+        user_id=update.message.chat_id,
+        session_id=session_id
     )
 
-    question = update.message.text
+    messages_history = MessageCRUD().get_session_messages(session_id)
+    context = " ".join([message.text for message in messages_history])
+
+    question = context + update.message.text
     result = await openai_answer(
         question,
         active_assistant.assistant.external_id,
@@ -120,9 +126,17 @@ async def openai_answer(question, assistant_id, thread_id):
     return messages
 
 
+async def post_init(application: Application):
+    await application.bot.set_my_commands([
+        BotCommand("/assistants", "Get list of available assistants"),
+        BotCommand("/activate", "Activate an assistant by name"),
+        BotCommand("/active", "Get active assistant name")
+    ])
+
+
 def main():
-    application = Application.builder().token(settings.telegram_bot_token).build()
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^Ingest"), answer))
+    application = Application.builder().token(settings.telegram_bot_token).post_init(post_init).build()
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, answer))
     application.add_handler(CommandHandler("assistants", get_assistants, has_args=False))
     application.add_handler(CommandHandler("activate", activate_assistant, has_args=True))
     application.add_handler(CommandHandler("active", get_active_assistant, has_args=False))
