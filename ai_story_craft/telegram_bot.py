@@ -15,8 +15,10 @@ from langfuse.decorators import observe
 from collections import deque, defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from assistant import answer as assistant_answer
 from langfuse.decorators import langfuse_context
 from db.models_crud import ChatCRUD, AssistantCRUD, ActiveAssistantCRUD, MessageCRUD, now
+from session_identifier import TimeoutSessoinIdentifier
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -36,37 +38,11 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No assistant is currently active. Please activate an assistant first.")
         return
 
-    chat = ChatCRUD().get_by_external_id(update.message.chat_id)
-    if chat is None:
-        chat = ChatCRUD().create(chat_id=update.message.chat_id)
-
-    if chat.openai_thread_id is None:
-        openai_thread_id = openai.beta.threads.create().id
-        chat = ChatCRUD().update(chat.id, openai_thread_id=openai_thread_id)
-
-        if not chat:
-            raise ValueError(f"Chat with id {update.message.chat_id} not found")
-
-    if now() - MessageCRUD().get_last_interaction(chat.id) > settings.new_session_timeout:
-        session_id = uuid4()
-    else:
-        session_id = MessageCRUD().get_last_session(chat.id).id
-
-    langfuse_context.update_current_trace(
-        user_id=update.message.chat_id,
-        session_id=session_id
+    reply = await assistant_answer(
+        chat_id=update.message.chat_id,
+        session_evaluator=TimeoutSessoinIdentifier(update.message.chat_id, timeout=settings.new_session_timeout),
+        prompt=update.message.text, active_assistant_id=active_assistant.assistant.external_id
     )
-
-    messages_history = MessageCRUD().get_session_messages(session_id)
-    context = " ".join([message.text for message in messages_history])
-
-    question = context + update.message.text
-    result = await openai_answer(
-        question,
-        active_assistant.assistant.external_id,
-        chat.openai_thread_id
-    )
-    reply = result.data[0].content[0].text.value
 
     await update.message.reply_text(reply)
 
