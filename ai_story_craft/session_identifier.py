@@ -2,6 +2,7 @@ from uuid import uuid4
 from abc import ABC, abstractmethod
 from db.models_crud import MessageCRUD, now
 
+
 class BaseSessionIdentifier(ABC):
 
     @abstractmethod
@@ -9,7 +10,18 @@ class BaseSessionIdentifier(ABC):
         raise NotImplementedError()
 
 
+class FixedSessionIdentifier(BaseSessionIdentifier):
+    def __init__(self, session_id):
+        self.session_id = session_id
+
+    def identify(self):
+        return self.session_id
+
+
 class TimeoutSessoinIdentifier(BaseSessionIdentifier):
+    """
+    Creates new sessoin id if time elapsed from the last message is bigger than given timeout
+    """
 
     def __init__(
             self,

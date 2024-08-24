@@ -9,15 +9,11 @@ from telegram.ext import (
 )
 import time
 import os
-from uuid import uuid4
 from langfuse.openai import openai
 from langfuse.decorators import observe
 from collections import deque, defaultdict
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from assistant import answer as assistant_answer
-from langfuse.decorators import langfuse_context
-from db.models_crud import ChatCRUD, AssistantCRUD, ActiveAssistantCRUD, MessageCRUD, now
+from db.models_crud import AssistantCRUD, ActiveAssistantCRUD
 from session_identifier import TimeoutSessoinIdentifier
 
 # Conversation history dictionary
