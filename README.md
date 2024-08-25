@@ -1,1 +1,7 @@
 # ai-story-craft
+
+This project is created as a tool to help Product Managers to wirk with 
+video analysis such as product workshops, user interviews, etc.
+
+The tool provides chat based interface to extract user stories from the video, 
+analyse them, get screenshots, and create a story map.
