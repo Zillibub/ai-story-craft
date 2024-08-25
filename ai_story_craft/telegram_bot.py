@@ -1,5 +1,5 @@
 from core.settings import settings
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import (
     Application,
     ContextTypes,
@@ -8,25 +8,25 @@ from telegram.ext import (
     filters,
 )
 import time
-import openai
+import os
+from langfuse.openai import openai
+from langfuse.decorators import observe
 from collections import deque, defaultdict
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from db.models_crud import MessageCRUD, ChatCRUD, AssistantCRUD, ActiveAssistantCRUD
-from db.models import Chat
+from assistant import answer as assistant_answer
+from db.models_crud import AssistantCRUD, ActiveAssistantCRUD
+from session_identifier import TimeoutSessoinIdentifier
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
 
-engine = create_engine(settings.database_url, echo=True)
+os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY
+os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
+os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
 
-Session = sessionmaker(bind=engine)
-openai_client = openai.Client(api_key=settings.openai_api_key)
+openai.api_key = settings.openai_api_key
 
-# Chat threads dictionary
 
-chat_threads = {}
-
+@observe()
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     active_assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
 
@@ -34,39 +34,10 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No assistant is currently active. Please activate an assistant first.")
         return
 
-    chat = ChatCRUD().get_by_external_id(update.message.chat_id)
-    if chat is None:
-        chat = ChatCRUD().create(chat_id=update.message.chat_id)
-
-    if chat.openai_thread_id is None:
-        openai_thread_id = openai_client.beta.threads.create().id
-        chat = ChatCRUD().update(chat.id, openai_thread_id=openai_thread_id)
-
-        if not chat:
-            raise ValueError(f"Chat with id {update.message.chat_id} not found")
-
-    question = update.message.text
-
-    MessageCRUD().create(
-        chat_id=chat.id,
-        assistant_id=active_assistant.assistant_id,
-        message=question,
-        direction='incoming'
-    )
-
-    result = await openai_answer(
-        question,
-        active_assistant.assistant.external_id,
-        chat.openai_thread_id
-    )
-
-    reply = result.data[0].content[0].text.value
-
-    MessageCRUD().create(
-        chat_id=chat.id,
-        assistant_id=active_assistant.assistant_id,
-        message=reply,
-        direction='outgoing'
+    reply = await assistant_answer(
+        chat_id=update.message.chat_id,
+        session_evaluator=TimeoutSessoinIdentifier(update.message.chat_id, timeout=settings.new_session_timeout),
+        prompt=update.message.text, active_assistant_id=active_assistant.assistant.external_id
     )
 
     await update.message.reply_text(reply)
@@ -102,33 +73,42 @@ async def activate_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(f"Error activating assistant {assistant_name}.")
 
 
+@observe()
 async def openai_answer(question, assistant_id, thread_id):
-    openai_client.beta.threads.messages.create(
+    openai.beta.threads.messages.create(
         thread_id=thread_id,
         content=question,
         role="user"
     )
-    run = openai_client.beta.threads.runs.create(
+    run = openai.beta.threads.runs.create(
         thread_id=thread_id,
         assistant_id=assistant_id,
         # instructions=question
     )
     while run.status == "queued" or run.status == "in_progress":
-        run = openai_client.beta.threads.runs.retrieve(
+        run = openai.beta.threads.runs.retrieve(
             thread_id=thread_id,
             run_id=run.id,
         )
         time.sleep(0.2)
 
-    messages = openai_client.beta.threads.messages.list(
+    messages = openai.beta.threads.messages.list(
         thread_id=thread_id
     )
     return messages
 
 
+async def post_init(application: Application):
+    await application.bot.set_my_commands([
+        BotCommand("/assistants", "Get list of available assistants"),
+        BotCommand("/activate", "Activate an assistant by name"),
+        BotCommand("/active", "Get active assistant name")
+    ])
+
+
 def main():
-    application = Application.builder().token(settings.telegram_bot_token).build()
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^Ingest"), answer))
+    application = Application.builder().token(settings.telegram_bot_token).post_init(post_init).build()
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, answer))
     application.add_handler(CommandHandler("assistants", get_assistants, has_args=False))
     application.add_handler(CommandHandler("activate", activate_assistant, has_args=True))
     application.add_handler(CommandHandler("active", get_active_assistant, has_args=False))

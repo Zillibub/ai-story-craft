@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 from assistant import create_assistant
 from subtitles_extractor import extract_subtitles
@@ -10,7 +11,9 @@ class StoryCraft:
         self.work_directory = work_directory
         self.video_path = video_path
 
-    def evaluate(self):
+        self.work_directory.mkdir(exist_ok=True)
+
+    def evaluate(self, assistant_name: str = None):
         if not self.work_directory.exists():
             self.work_directory.mkdir()
 
@@ -18,12 +21,21 @@ class StoryCraft:
         if not subtitles_path.exists():
             extract_subtitles(self.video_path, subtitles_path)
 
-        assistant = create_assistant(name='assistant_1', subtitle_file=subtitles_path)
+        assistant = create_assistant(
+            name=assistant_name or f"assistant_{self.work_directory.name}",
+            subtitle_file=subtitles_path
+        )
         AssistantCRUD().create(external_id=assistant.id, name=assistant.name)
 
 
 if __name__ == '__main__':
-    video_path = Path('../../data/jupyter_notebook_tutorial.mp4')
-    work_directory = Path('../../data/short')
-    work_directory.mkdir(exist_ok=True)
-    StoryCraft(video_path, work_directory).evaluate()
+
+    parser = argparse.ArgumentParser(description='Creates assistant')
+    parser.add_argument('-v', '--video_path', type=str, required=True,
+                        help='Path to the video file')
+    parser.add_argument('-d', '--work_directory', type=str, required=True,
+                        help='Path to the output working directory')
+    parser.add_argument('-a', '--assistant_name', type=str, required=False,
+                        help='Path to the output working directory')
+    args = parser.parse_args()
+    StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate(assistant_name=args.assistant_name)
