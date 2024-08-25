@@ -6,7 +6,7 @@ from core.settings import settings
 from openai.resources.beta.assistants import Assistant
 from langfuse.decorators import langfuse_context
 from langfuse.decorators import observe
-from session_evaluator import BaseSessionEvaluator
+from session_identifier import BaseSessionIdentifier
 from db.models_crud import ChatCRUD, MessageCRUD
 
 
@@ -70,7 +70,7 @@ async def openai_answer(question, assistant_id, thread_id):
 @observe()
 async def answer(
         chat_id,
-        session_evaluator: BaseSessionEvaluator,
+        session_evaluator: BaseSessionIdentifier,
         prompt,
         active_assistant_id
 
@@ -86,7 +86,7 @@ async def answer(
         if not chat:
             raise ValueError(f"Chat with id {chat_id} not found")
 
-    session_id = session_evaluator.evaluate()
+    session_id = session_evaluator.identify()
 
     langfuse_context.update_current_trace(
         user_id=chat_id,
