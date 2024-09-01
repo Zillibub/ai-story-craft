@@ -13,7 +13,7 @@ from langfuse.openai import openai
 from langfuse.decorators import observe
 from collections import deque, defaultdict
 from assistant import answer as assistant_answer
-from db.models_crud import AssistantCRUD, ActiveAssistantCRUD
+from db.models_crud import AssistantCRUD, ActiveAssistantCRUD, ChatCRUD
 from session_identifier import TimeoutSessoinIdentifier
 
 # Conversation history dictionary
@@ -67,6 +67,10 @@ async def activate_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if assistant is None:
         await update.message.reply_text(f"Assistant {assistant_name} not found.")
         return
+
+    chat = ChatCRUD().get_by_external_id(update.message.chat_id)
+    if chat is None:
+        chat = ChatCRUD().create(chat_id=update.message.chat_id)
 
     active_assistant = ActiveAssistantCRUD().activate_assistant(update.message.chat_id, assistant.id)
 
