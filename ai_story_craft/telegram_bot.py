@@ -45,7 +45,10 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_assistants(update: Update, context: ContextTypes.DEFAULT_TYPE):
     assistants = AssistantCRUD().get_list()
-    reply = "Available assistants:\n" + "\t\n".join([assistant.name for assistant in assistants])
+    if len(assistants) == 0:
+        reply = "No assistants available."
+    else:
+        reply = "Available assistants:\n" + "\t\n".join([assistant.name for assistant in assistants])
     await update.message.reply_text(reply)
 
 

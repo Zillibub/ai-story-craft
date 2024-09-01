@@ -1,5 +1,6 @@
 import openai
 import time
+from typing import Tuple
 from agents import ProductManager
 from pathlib import Path
 from core.settings import settings
@@ -13,7 +14,7 @@ from db.models_crud import ChatCRUD, MessageCRUD
 def create_assistant(
         name: str,
         subtitle_file: Path,
-) -> Assistant:
+) -> Tuple[Assistant, str]:
     """
     Create an assistant with a file search tool from a given subtitle path file.
     :param name:
@@ -39,11 +40,17 @@ def create_assistant(
         tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
         tools=[{"type": "file_search"}]
     )
-    return assistant
+
+    description = openai_answer(
+        ProductManager.assistant_description_prompt,
+        assistant.id,
+        openai.beta.threads.create().id
+    ).data[0].content[0].text.value
+    return assistant, description
 
 
 @observe()
-async def openai_answer(question, assistant_id, thread_id):
+def openai_answer(question, assistant_id, thread_id):
     openai.beta.threads.messages.create(
         thread_id=thread_id,
         content=question,
@@ -97,7 +104,7 @@ async def answer(
     context = " ".join([message.text for message in messages_history])
 
     question = context + prompt
-    result = await openai_answer(
+    result = openai_answer(
         question,
         active_assistant_id,
         chat.openai_thread_id

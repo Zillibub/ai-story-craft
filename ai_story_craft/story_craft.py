@@ -17,15 +17,15 @@ class StoryCraft:
         if not self.work_directory.exists():
             self.work_directory.mkdir()
 
-        subtitles_path = self.work_directory / 'subtitles.txt'
+        subtitles_path = self.work_directory / 'subtitles.json'
         if not subtitles_path.exists():
             extract_subtitles(self.video_path, subtitles_path)
 
-        assistant = create_assistant(
+        assistant, description = create_assistant(
             name=assistant_name or f"assistant_{self.work_directory.name}",
             subtitle_file=subtitles_path
         )
-        AssistantCRUD().create(external_id=assistant.id, name=assistant.name)
+        AssistantCRUD().create(external_id=assistant.id, name=assistant.name, description=description)
 
 
 if __name__ == '__main__':

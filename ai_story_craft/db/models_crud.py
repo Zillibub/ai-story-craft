@@ -24,7 +24,7 @@ class AssistantCRUD(CRUD):
 
     def get_list(self, page_number: int = 0, page_size: int = 10):
         with self.scoped_session() as session:
-            instances = session.query(self.model).limit(page_size).offset(page_size * (page_number - 1)).all()
+            instances = session.query(self.model).limit(page_size).offset(page_size * page_number).all()
         return instances
 
     def get_by_name(self, name: str):

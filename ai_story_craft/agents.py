@@ -8,6 +8,11 @@ class ProductManager:
         Use only the provided information to answer the user's questions.
         """
 
+    assistant_description_prompt: str = """
+    Create an assistant description based on provided documentation. It should be no more than 400 symbols.
+    it should clearly describe with content of the documentation. Do not add any links to the sources. 
+    """
+
     telegram_formatting: str = """
     You are given a text. Format it to your best judgement based on these rules: 
     <b>text</b> - Bold text, <i>text</i> - Italicize text, <u>text</u> - Underline text, 

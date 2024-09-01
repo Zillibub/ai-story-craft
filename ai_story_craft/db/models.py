@@ -23,6 +23,7 @@ class Assistant(Base):
     external_id = Column(String, nullable=False)
     name = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, default=func.now())
+    description = Column(String, nullable=True)
 
 
 class ActiveAssistant(Base):
