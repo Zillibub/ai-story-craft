@@ -68,11 +68,11 @@ async def activate_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(f"Assistant {assistant_name} not found.")
         return
 
-    chat = ChatCRUD().get_by_external_id(update.message.chat_id)
+    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
     if chat is None:
         chat = ChatCRUD().create(chat_id=update.message.chat_id)
 
-    active_assistant = ActiveAssistantCRUD().activate_assistant(update.message.chat_id, assistant.id)
+    active_assistant = ActiveAssistantCRUD().activate_assistant(chat.id, assistant.id)
 
     if active_assistant:
         await update.message.reply_text(f"Assistant {assistant_name} activated.")
