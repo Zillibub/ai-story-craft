@@ -56,7 +56,10 @@ async def get_active_assistant(update: Update, context: ContextTypes.DEFAULT_TYP
     active_assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
 
     if active_assistant:
-        await update.message.reply_text(f"Active assistant: {active_assistant.assistant.name}")
+        await update.message.reply_text(
+            f"Active assistant: {active_assistant.assistant.name} \n "
+            f"Description: {active_assistant.assistant.description}"
+        )
     else:
         await update.message.reply_text("No active assistant.")
 
