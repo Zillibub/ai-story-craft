@@ -23,7 +23,7 @@ os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY
 os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
 os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
 
-openai.api_key = settings.openai_api_key
+openai.api_key = settings.OPENAI_API_KEY
 
 
 @observe()
@@ -59,7 +59,8 @@ async def get_active_assistant(update: Update, context: ContextTypes.DEFAULT_TYP
     if active_assistant:
         await update.message.reply_text(
             f"Active assistant: {active_assistant.assistant.name} \n\n "
-            f"Description: {active_assistant.assistant.description}"
+            f"Description: {active_assistant.assistant.description} \n"
+            f"Id: {active_assistant.assistant.external_id}"
         )
     else:
         await update.message.reply_text("No active assistant.")

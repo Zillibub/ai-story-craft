@@ -24,7 +24,7 @@ def create_assistant(
     if not subtitle_file.exists():
         raise FileNotFoundError(f"Subtitle file not found: {subtitle_file}")
 
-    client = openai.Client(api_key=settings.openai_api_key)
+    client = openai.Client(api_key=settings.OPENAI_API_KEY)
     vector_store = client.beta.vector_stores.create(name=subtitle_file.stem)
 
     file_batch = client.beta.vector_stores.file_batches.upload_and_poll(
