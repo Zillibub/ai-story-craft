@@ -53,11 +53,12 @@ async def get_assistants(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_active_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    active_assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
+    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
+    active_assistant = ActiveAssistantCRUD().get_active_assistant(chat.id)
 
     if active_assistant:
         await update.message.reply_text(
-            f"Active assistant: {active_assistant.assistant.name} \n "
+            f"Active assistant: {active_assistant.assistant.name} \n\n "
             f"Description: {active_assistant.assistant.description}"
         )
     else:
@@ -81,31 +82,6 @@ async def activate_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(f"Assistant {assistant_name} activated.")
     else:
         await update.message.reply_text(f"Error activating assistant {assistant_name}.")
-
-
-@observe()
-async def openai_answer(question, assistant_id, thread_id):
-    openai.beta.threads.messages.create(
-        thread_id=thread_id,
-        content=question,
-        role="user"
-    )
-    run = openai.beta.threads.runs.create(
-        thread_id=thread_id,
-        assistant_id=assistant_id,
-        # instructions=question
-    )
-    while run.status == "queued" or run.status == "in_progress":
-        run = openai.beta.threads.runs.retrieve(
-            thread_id=thread_id,
-            run_id=run.id,
-        )
-        time.sleep(0.2)
-
-    messages = openai.beta.threads.messages.list(
-        thread_id=thread_id
-    )
-    return messages
 
 
 async def post_init(application: Application):
