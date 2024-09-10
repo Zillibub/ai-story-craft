@@ -61,10 +61,13 @@ def openai_answer(question, assistant_id, thread_id):
         assistant_id=assistant_id,
         # instructions=question
     )
+
     while run.status == "queued" or run.status == "in_progress":
-        run = openai.beta.threads.runs.retrieve(
+        run = openai.beta.threads.runs.steps.retrieve(
             thread_id=thread_id,
             run_id=run.id,
+            step_id='step-123',
+            extra_query={'include': 'step_details.tool_calls[*].file_search.results[*].content'}
         )
         time.sleep(0.2)
 

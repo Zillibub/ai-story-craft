@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from assistant import create_assistant
+from rag.openai_assistant import create_assistant
 from subtitles_extractor import extract_subtitles
 from db.models_crud import AssistantCRUD
 

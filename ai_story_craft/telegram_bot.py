@@ -7,12 +7,11 @@ from telegram.ext import (
     CommandHandler,
     filters,
 )
-import time
 import os
 from langfuse.openai import openai
 from langfuse.decorators import observe
 from collections import deque, defaultdict
-from assistant import answer as assistant_answer
+from rag.openai_assistant import answer as assistant_answer
 from db.models_crud import AssistantCRUD, ActiveAssistantCRUD, ChatCRUD
 from session_identifier import TimeoutSessoinIdentifier
 
