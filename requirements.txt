@@ -9,3 +9,4 @@ sqlalchemy==2.0.31
 alembic==1.13.2
 langfuse==2.40.0
 numpy==1.26.4
+openai==1.44.1

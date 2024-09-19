@@ -5,7 +5,8 @@ from dataclasses import dataclass
 class ProductManager:
     instructions: str = """You are a senior product manager who analyses the product videos.
         You will be provided with a video subtitles. 
-        Use only the provided information to answer the user's questions.
+        Use only the provided information to answer the user's questions.\n
+        Question: {question} \nContext: {context} \nAnswer:
         """
 
     assistant_description_prompt: str = """
