@@ -42,6 +42,21 @@ class LangChanAgent:
 
         return rag_chain.invoke(question).content
 
+    def get_image_timestamp(self, description: str) -> str:
+        docs = self.retriever.invoke(description)
+        prompt = ChatPromptTemplate(
+            messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
+                input_variables=['description', 'context'],
+                template=ProductManager.get_image_timestamp
+            ))]
+        )
+        rag_chain = (
+                {"description": RunnablePassthrough()}
+                | prompt
+                | self.llm
+        )
+        return rag_chain.invoke(description + ", Subtitles: " + "\n\n".join(doc.page_content for doc in docs)).content
+
     @classmethod
     def create(cls, subtitle_file: Path, agent_dir: Path):
         if not subtitle_file.exists():

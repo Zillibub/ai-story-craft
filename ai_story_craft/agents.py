@@ -9,6 +9,14 @@ class ProductManager:
         Question: {question} \nContext: {context} \nAnswer:
         """
 
+    get_image_timestamp: str = """You are a senior product manager who analyses the product videos.
+    You are provided with a set of video subtitles. and you need to find the timestamp of the image in the 
+    video based on the provided description.
+    Use only the provided information to answer the user's questions.\n
+    Return only the timestamp of the image in the video as one number. \n
+    Description: {description} \nAnswer:
+    """
+
     assistant_description_prompt: str = """
     Create an assistant description based on provided documentation. It should be no more than 400 symbols.
     it should clearly describe with content of the documentation. Do not add any links to the sources. 
