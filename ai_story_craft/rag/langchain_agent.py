@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from langchain_chroma import Chroma
 from langchain.vectorstores import VectorStore
@@ -7,7 +8,9 @@ from langchain.document_loaders import TextLoader
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
+from langchain_core.documents.base import Document
 from core.settings import settings
+from langchain_core.runnables import RunnableParallel
 from agents import ProductManager
 
 
@@ -30,14 +33,14 @@ class LangChanAgent:
     def _format_docs(docs):
         return "\n\n".join(doc.page_content for doc in docs)
 
-    def answer(self, question: str):
+    def answer(self, question: str) -> str:
         rag_chain = (
                 {"context": self.retriever | self._format_docs, "question": RunnablePassthrough()}
                 | self.prompt
                 | self.llm
         )
 
-        return rag_chain.invoke(question)
+        return rag_chain.invoke(question).content
 
     @classmethod
     def create(cls, subtitle_file: Path, agent_dir: Path):
@@ -47,8 +50,16 @@ class LangChanAgent:
             raise FileExistsError(f"Agent folder already exists: {agent_dir}")
         agent_dir.mkdir(parents=True)
 
-        loader = TextLoader(subtitle_file)
-        docs = loader.load()
+        with open(subtitle_file, 'r') as f:
+            subtitles = json.load(f)
+
+        segments = [{
+            'id': entry['id'],
+            'start': round(entry['start']),
+            'end': round(entry['end']),
+            'text': entry['text']} for entry in subtitles['segments']]
+
+        docs = [Document(page_content=str(segments))]
 
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         splits = text_splitter.split_documents(docs)
