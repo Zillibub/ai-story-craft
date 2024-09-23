@@ -1,6 +1,5 @@
 import json
 import ffmpeg
-from PIL import Image
 from io import BytesIO
 from pathlib import Path
 from langchain_chroma import Chroma
@@ -70,18 +69,15 @@ class LangChanAgent:
     def get_image(self, description: str) -> bytes:
         timestamp = float(self.get_image_timestamp(description))
 
-        buffer = BytesIO()
-
-        (
+        process =(
             ffmpeg
             .input(self.video_path, ss=timestamp)
             .output('pipe:', vframes=1, format='image2', vcodec='png')
-            .run(capture_stdout=True, capture_stderr=True, stdout=buffer)
+            .run_async(pipe_stdout=True, pipe_stderr=True)
         )
+        image_bytes, _ = process.communicate()
 
-        buffer.seek(0)
-
-        return buffer.getvalue()
+        return image_bytes
 
     @classmethod
     def create(cls, video_path: Path, subtitle_file_path: Path, agent_dir: Path):
