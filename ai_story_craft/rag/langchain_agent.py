@@ -1,4 +1,7 @@
 import json
+import ffmpeg
+from PIL import Image
+from io import BytesIO
 from pathlib import Path
 from langchain_chroma import Chroma
 from langchain.vectorstores import VectorStore
@@ -18,10 +21,17 @@ class LangChanAgent:
     description_path: str = "description.txt"
     vectorstore_path: str = "vectorstore"
 
-    def __init__(self, vector_store: VectorStore, description: str):
+    def __init__(
+            self,
+            vector_store: VectorStore,
+            video_path: Path,
+            description: str
+    ):
         self.llm = ChatOpenAI(model=settings.assistant_model)
         self.vector_store = vector_store
         self.retriever = self.vector_store.as_retriever()
+        self.video_path = video_path
+        self.description = description
 
         self.prompt = ChatPromptTemplate(
             messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
@@ -57,15 +67,31 @@ class LangChanAgent:
         )
         return rag_chain.invoke(description + ", Subtitles: " + "\n\n".join(doc.page_content for doc in docs)).content
 
+    def get_image(self, description: str) -> bytes:
+        timestamp = float(self.get_image_timestamp(description))
+
+        buffer = BytesIO()
+
+        (
+            ffmpeg
+            .input(self.video_path, ss=timestamp)
+            .output('pipe:', vframes=1, format='image2', vcodec='png')
+            .run(capture_stdout=True, capture_stderr=True, stdout=buffer)
+        )
+
+        buffer.seek(0)
+
+        return buffer.getvalue()
+
     @classmethod
-    def create(cls, subtitle_file: Path, agent_dir: Path):
-        if not subtitle_file.exists():
-            raise FileNotFoundError(f"Subtitle file not found: {subtitle_file}")
+    def create(cls, video_path: Path, subtitle_file_path: Path, agent_dir: Path):
+        if not subtitle_file_path.exists():
+            raise FileNotFoundError(f"Subtitle file not found: {subtitle_file_path}")
         if agent_dir.exists():
             raise FileExistsError(f"Agent folder already exists: {agent_dir}")
         agent_dir.mkdir(parents=True)
 
-        with open(subtitle_file, 'r') as f:
+        with open(subtitle_file_path, 'r') as f:
             subtitles = json.load(f)
 
         segments = [{
@@ -90,14 +116,22 @@ class LangChanAgent:
         with open(agent_dir / cls.description_path, 'w') as f:
             f.write(description)
 
-        return cls(vector_store=vectorstore, description=description)
+        return cls(
+            vector_store=vectorstore,
+            description=description,
+            video_path=video_path
+        )
 
     @classmethod
-    def load(cls, agent_dir: Path):
+    def load(cls, agent_dir: Path, video_path: Path):
         vectorstore = Chroma(
             embedding_function=OpenAIEmbeddings(),
             persist_directory=str(agent_dir / cls.vectorstore_path)
         )
         with open(agent_dir / cls.description_path, 'r') as f:
             description = f.read()
-        return cls(vector_store=vectorstore, description=description)
+        return cls(
+            vector_store=vectorstore,
+            description=description,
+            video_path=video_path
+        )
