@@ -16,11 +16,10 @@ class Chat(Base):
     chat_type = Column(Enum('telegram', name='chat_types'), default='telegram')
 
 
-class Assistant(Base):
+class Agent(Base):
     __tablename__ = 'assistants'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    external_id = Column(String, nullable=False)
     name = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, default=func.now())
     description = Column(String, nullable=True)

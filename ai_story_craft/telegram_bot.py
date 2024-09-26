@@ -14,6 +14,7 @@ from collections import deque, defaultdict
 from rag.openai_assistant import answer as assistant_answer
 from db.models_crud import AssistantCRUD, ActiveAssistantCRUD, ChatCRUD
 from session_identifier import TimeoutSessoinIdentifier
+from rag.agent_manager import AgentManager
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))

@@ -17,15 +17,17 @@ from agents import ProductManager
 
 
 class LangChanAgent:
-    description_path: str = "description.txt"
+    metadata_path: str = "description.txt"
     vectorstore_path: str = "vectorstore"
 
     def __init__(
             self,
+            name: str,
             vector_store: VectorStore,
             video_path: Path,
             description: str
     ):
+        self.name = name
         self.llm = ChatOpenAI(model=settings.assistant_model)
         self.vector_store = vector_store
         self.retriever = self.vector_store.as_retriever()
@@ -80,7 +82,7 @@ class LangChanAgent:
         return image_bytes
 
     @classmethod
-    def create(cls, video_path: Path, subtitle_file_path: Path, agent_dir: Path):
+    def create(cls, name: str, video_path: Path, subtitle_file_path: Path, agent_dir: Path):
         if not subtitle_file_path.exists():
             raise FileNotFoundError(f"Subtitle file not found: {subtitle_file_path}")
         if agent_dir.exists():
@@ -109,8 +111,12 @@ class LangChanAgent:
         llm = ChatOpenAI(model=settings.assistant_model)
         description = llm.invoke([["human", ProductManager.assistant_description_prompt]]).content
 
-        with open(agent_dir / cls.description_path, 'w') as f:
-            f.write(description)
+        with open(agent_dir / cls.metadata_path, 'w') as f:
+            json.dump({
+                'name': name,
+                'description': description,
+                'video_path': str(video_path)
+            }, f)
 
         return cls(
             vector_store=vectorstore,
@@ -119,14 +125,19 @@ class LangChanAgent:
         )
 
     @classmethod
-    def load(cls, agent_dir: Path, video_path: Path):
+    def load(cls, agent_dir: Path):
         vectorstore = Chroma(
             embedding_function=OpenAIEmbeddings(),
             persist_directory=str(agent_dir / cls.vectorstore_path)
         )
-        with open(agent_dir / cls.description_path, 'r') as f:
-            description = f.read()
+        with open(agent_dir / cls.metadata_path, 'r') as f:
+            metadata = json.load(f)
+            description = metadata['description']
+            name = metadata['name']
+            video_path = Path(metadata['video_path'])
+
         return cls(
+            name=name,
             vector_store=vectorstore,
             description=description,
             video_path=video_path

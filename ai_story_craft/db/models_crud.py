@@ -18,7 +18,7 @@ class ChatCRUD(CRUD):
         return instance
 
 
-class AssistantCRUD(CRUD):
+class AgentCRUD(CRUD):
     def __init__(self):
         super().__init__(Assistant)
 

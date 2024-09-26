@@ -1,8 +1,9 @@
 import argparse
 from pathlib import Path
 from rag.openai_assistant import create_assistant
+from rag.langchain_agent import LangChanAgent
 from subtitles_extractor import extract_subtitles
-from db.models_crud import AssistantCRUD
+from db.models_crud import AgentCRUD
 
 
 class StoryCraft:
@@ -21,11 +22,12 @@ class StoryCraft:
         if not subtitles_path.exists():
             extract_subtitles(self.video_path, subtitles_path)
 
-        assistant, description = create_assistant(
-            name=assistant_name or f"assistant_{self.work_directory.name}",
-            subtitle_file=subtitles_path
+        agent = LangChanAgent.create(
+            video_path=self.video_path,
+            subtitle_file_path=subtitles_path,
+            agent_dir=self.work_directory / 'agent'
         )
-        AssistantCRUD().create(external_id=assistant.id, name=assistant.name, description=description)
+        AgentCRUD().create(name=assistant.name, description=description)
 
 
 if __name__ == '__main__':
