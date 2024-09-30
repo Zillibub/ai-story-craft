@@ -1,7 +1,7 @@
 from db.base_crud import CRUD, engine
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
-from db.models import Chat, Assistant, ActiveAssistant, Message
+from db.models import Chat, Agent, ActiveAssistant, Message
 
 
 def now():
@@ -20,7 +20,7 @@ class ChatCRUD(CRUD):
 
 class AgentCRUD(CRUD):
     def __init__(self):
-        super().__init__(Assistant)
+        super().__init__(Agent)
 
     def get_list(self, page_number: int = 0, page_size: int = 10):
         with self.scoped_session() as session:

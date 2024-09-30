@@ -22,7 +22,7 @@ def extract_subtitles(video_path: Path, output_path: Path):
         result = model.transcribe(audio_path)
 
         with open(output_path, "w", encoding="utf-8") as srt:
-            json.dump(result["segments"], srt)
+            json.dump(result, srt)
 
 
 def write_srt(transcript: Iterator[dict], file: TextIO):
