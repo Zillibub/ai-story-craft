@@ -13,13 +13,17 @@ class StoryCraft:
 
         self.work_directory.mkdir(exist_ok=True)
 
-    def evaluate(self, assistant_name: str = None):
+    def evaluate(self, assistant_name: str = None, language: str = None):
         if not self.work_directory.exists():
             self.work_directory.mkdir()
 
         subtitles_path = self.work_directory / 'subtitles.json'
         if not subtitles_path.exists():
-            extract_subtitles(self.video_path, subtitles_path)
+            extract_subtitles(
+                self.video_path,
+                subtitles_path,
+                language=language
+            )
 
         agent = LangChanAgent.create(
             name=assistant_name or self.video_path.stem,
@@ -39,5 +43,10 @@ if __name__ == '__main__':
                         help='Path to the output working directory')
     parser.add_argument('-a', '--assistant_name', type=str, required=False,
                         help='Path to the output working directory')
+    parser.add_argument('-l', '--language', type=str, required=False,
+                        help='Language for subtitles extraction')
     args = parser.parse_args()
-    StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate(assistant_name=args.assistant_name)
+    StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate(
+        assistant_name=args.assistant_name,
+        language=args.language
+    )
