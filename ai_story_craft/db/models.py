@@ -17,7 +17,7 @@ class Chat(Base):
 
 
 class Agent(Base):
-    __tablename__ = 'assistants'
+    __tablename__ = 'agents'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, unique=True)
@@ -26,15 +26,15 @@ class Agent(Base):
 
 
 class ActiveAssistant(Base):
-    __tablename__ = 'active_assistants'
+    __tablename__ = 'active_agents'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(Integer, ForeignKey('chats.id'))
-    assistant_id = Column(Integer, ForeignKey('assistants.id'))
+    agents_id = Column(Integer, ForeignKey('agents.id'))
     activated_at = Column(DateTime, default=func.now())
 
     chat = relationship('Chat')
-    assistant = relationship('Assistant')
+    agent = relationship('Agent')
 
 
 class Message(Base):
@@ -42,7 +42,7 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(Integer, ForeignKey('chats.id'))
-    assistant_id = Column(Integer, ForeignKey('assistants.id'))
+    agent_id = Column(Integer, ForeignKey('agents.id'))
 
     session_id = Column(String, nullable=False)
     message = Column(String, nullable=False)
@@ -50,4 +50,4 @@ class Message(Base):
     created_at = Column(DateTime, default=func.now())
 
     chat = relationship('Chat')
-    assistant = relationship('Assistant')
+    agent = relationship('Agent')
