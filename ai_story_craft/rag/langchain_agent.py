@@ -1,5 +1,6 @@
 import json
 import ffmpeg
+import shutil
 from io import BytesIO
 from pathlib import Path
 from langchain_chroma import Chroma
@@ -82,11 +83,21 @@ class LangChanAgent:
         return image_bytes
 
     @classmethod
-    def create(cls, name: str, video_path: Path, subtitle_file_path: Path, agent_dir: Path):
+    def create(
+            cls,
+            name: str,
+            video_path: Path,
+            subtitle_file_path: Path,
+            agent_dir: Path,
+            overwrite: bool = False
+    ):
         if not subtitle_file_path.exists():
             raise FileNotFoundError(f"Subtitle file not found: {subtitle_file_path}")
         if agent_dir.exists():
-            raise FileExistsError(f"Agent folder already exists: {agent_dir}")
+            if overwrite:
+                shutil.rmtree(agent_dir)
+            else:
+                raise FileExistsError(f"Agent folder already exists: {agent_dir}")
         agent_dir.mkdir(parents=True)
 
         with open(subtitle_file_path, 'r') as f:
@@ -119,6 +130,7 @@ class LangChanAgent:
             }, f)
 
         return cls(
+            name=name,
             vector_store=vectorstore,
             description=description,
             video_path=video_path

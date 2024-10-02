@@ -13,7 +13,12 @@ class StoryCraft:
 
         self.work_directory.mkdir(exist_ok=True)
 
-    def evaluate(self, assistant_name: str = None, language: str = None):
+    def evaluate(
+            self,
+            assistant_name: str = None,
+            language: str = None,
+            overwrite: bool = False
+    ):
         if not self.work_directory.exists():
             self.work_directory.mkdir()
 
@@ -29,9 +34,13 @@ class StoryCraft:
             name=assistant_name or self.video_path.stem,
             video_path=self.video_path,
             subtitle_file_path=subtitles_path,
-            agent_dir=self.work_directory / 'agent'
+            agent_dir=self.work_directory / 'agent',
+            overwrite=overwrite
         )
-        AgentCRUD().create(name=agent.name, description=agent.description)
+        AgentCRUD().create(
+            name=agent.name,
+            description=agent.description
+        )
 
 
 if __name__ == '__main__':
@@ -45,8 +54,11 @@ if __name__ == '__main__':
                         help='Path to the output working directory')
     parser.add_argument('-l', '--language', type=str, required=False,
                         help='Language for subtitles extraction')
+    parser.add_argument('-o', '--overwrite', type=bool, required=False,
+                        help='Override folder if exists')
     args = parser.parse_args()
     StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate(
         assistant_name=args.assistant_name,
-        language=args.language
+        language=args.language,
+        overwrite=args.overwrite
     )
