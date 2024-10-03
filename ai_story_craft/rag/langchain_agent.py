@@ -1,19 +1,16 @@
 import json
 import ffmpeg
 import shutil
-from io import BytesIO
 from pathlib import Path
 from langchain_chroma import Chroma
 from langchain.vectorstores import VectorStore
 from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.document_loaders import TextLoader
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
 from langchain_core.documents.base import Document
 from core.settings import settings
-from langchain_core.runnables import RunnableParallel
 from agents import ProductManager
 
 
