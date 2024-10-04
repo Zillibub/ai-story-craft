@@ -12,6 +12,10 @@ from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTe
 from langchain_core.documents.base import Document
 from core.settings import settings
 from agents import ProductManager
+from langfuse.openai import openai
+
+
+openai.api_key = settings.OPENAI_API_KEY
 
 
 class LangChanAgent:
@@ -26,7 +30,7 @@ class LangChanAgent:
             description: str
     ):
         self.name = name
-        self.llm = ChatOpenAI(model=settings.assistant_model)
+        self.llm = ChatOpenAI(model=settings.assistant_model, openai_api_key=settings.OPENAI_API_KEY)
         self.vector_store = vector_store
         self.retriever = self.vector_store.as_retriever()
         self.video_path = video_path
@@ -136,7 +140,7 @@ class LangChanAgent:
     @classmethod
     def load(cls, agent_dir: Path):
         vectorstore = Chroma(
-            embedding_function=OpenAIEmbeddings(),
+            embedding_function=OpenAIEmbeddings(openai_api_key=settings.OPENAI_API_KEY),
             persist_directory=str(agent_dir / cls.vectorstore_path)
         )
         with open(agent_dir / cls.metadata_path, 'r') as f:

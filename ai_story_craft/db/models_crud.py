@@ -37,13 +37,13 @@ class ActiveAgentCRUD(CRUD):
     def __init__(self):
         super().__init__(ActiveAgent)
 
-    def activate_agent(self, chat_id: int, assistant_id: int):
+    def activate_agent(self, chat_id: int, agent_id: int):
         with self.scoped_session().begin():
             instance = self.scoped_session.query(self.model).filter_by(chat_id=chat_id).first()
             if instance is None:
-                instance = self.model(chat_id=chat_id, assistant_id=assistant_id)
+                instance = self.model(chat_id=chat_id, agent_id=agent_id)
             else:
-                instance.assistant_id = assistant_id
+                instance.agent_id = agent_id
             self.scoped_session.add(instance)
         return instance
 
@@ -55,7 +55,7 @@ class ActiveAgentCRUD(CRUD):
     def get_active_agent(self, chat_id: int):
         with self.scoped_session() as session:
             instance = session.query(self.model).filter_by(chat_id=chat_id).options(
-                selectinload(self.model.assistant)).first()
+                selectinload(self.model.agent)).first()
         return instance
 
 

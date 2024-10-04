@@ -8,11 +8,13 @@ from telegram.ext import (
     filters,
 )
 import os
+from pathlib import Path
 from langfuse.openai import openai
 from langfuse.decorators import observe
 from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from rag.agent_manager import AgentManager
+from rag.langchain_agent import LangChanAgent
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -26,7 +28,8 @@ openai.api_key = settings.OPENAI_API_KEY
 
 @observe()
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    active_agent = ActiveAgentCRUD().get_active_agent(update.message.chat_id)
+    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
+    active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
     if active_agent is None:
         await update.message.reply_text("No agent is currently active. Please activate an agent first.")
@@ -56,7 +59,7 @@ async def get_active_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             f"Active agent: {active_agent.agent.name} \n\n "
             f"Description: {active_agent.agent.description} \n"
-            f"Id: {active_agent.agent.external_id}"
+            f"Id: {active_agent.agent.id}"
         )
     else:
         await update.message.reply_text("No active agent.")
@@ -64,6 +67,10 @@ async def get_active_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agent_name = context.args[0]
+    if not agent_name:
+        await update.message.reply_text("Please provide an agent name.")
+        return
+
     agent = AgentCRUD().get_by_name(agent_name)
     if agent is None:
         await update.message.reply_text(f"agent {agent_name} not found.")
@@ -92,7 +99,7 @@ async def post_init(application: Application):
 def load_agents():
     agents = AgentCRUD().get_list()
     for agent in agents:
-        AgentManager().add(agent.id, agent)
+        AgentManager().add(agent.id, LangChanAgent.load(Path(agent.agent_dir)))
 
 
 

@@ -30,16 +30,19 @@ class StoryCraft:
                 language=language
             )
 
+        agent_dir = self.work_directory / 'agent'
+
         agent = LangChanAgent.create(
             name=assistant_name or self.video_path.stem,
             video_path=self.video_path,
             subtitle_file_path=subtitles_path,
-            agent_dir=self.work_directory / 'agent',
+            agent_dir=agent_dir,
             overwrite=overwrite
         )
         AgentCRUD().create(
             name=agent.name,
-            description=agent.description
+            description=agent.description,
+            agent_dir=str(agent_dir)
         )
 
 

@@ -22,6 +22,7 @@ class Agent(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, default=func.now())
+    agent_dir = Column(String, nullable=False)
     description = Column(String, nullable=True)
 
 
