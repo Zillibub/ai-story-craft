@@ -25,12 +25,12 @@ class Agent(Base):
     description = Column(String, nullable=True)
 
 
-class ActiveAssistant(Base):
+class ActiveAgent(Base):
     __tablename__ = 'active_agents'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(Integer, ForeignKey('chats.id'))
-    agents_id = Column(Integer, ForeignKey('agents.id'))
+    agent_id = Column(Integer, ForeignKey('agents.id'))
     activated_at = Column(DateTime, default=func.now())
 
     chat = relationship('Chat')

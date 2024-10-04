@@ -1,7 +1,7 @@
 from db.base_crud import CRUD, engine
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
-from db.models import Chat, Agent, ActiveAssistant, Message
+from db.models import Chat, Agent, ActiveAgent, Message
 
 
 def now():
@@ -33,11 +33,11 @@ class AgentCRUD(CRUD):
         return instance
 
 
-class ActiveAssistantCRUD(CRUD):
+class ActiveAgentCRUD(CRUD):
     def __init__(self):
-        super().__init__(ActiveAssistant)
+        super().__init__(ActiveAgent)
 
-    def activate_assistant(self, chat_id: int, assistant_id: int):
+    def activate_agent(self, chat_id: int, assistant_id: int):
         with self.scoped_session().begin():
             instance = self.scoped_session.query(self.model).filter_by(chat_id=chat_id).first()
             if instance is None:
@@ -52,7 +52,7 @@ class ActiveAssistantCRUD(CRUD):
             instance = session.query(self.model).filter_by(chat_id=chat_id).first()
         return instance
 
-    def get_active_assistant(self, chat_id: int):
+    def get_active_agent(self, chat_id: int):
         with self.scoped_session() as session:
             instance = session.query(self.model).filter_by(chat_id=chat_id).options(
                 selectinload(self.model.assistant)).first()
