@@ -8,6 +8,8 @@ from telegram.ext import (
     filters,
 )
 import os
+import tempfile
+from typing import Union
 from pathlib import Path
 from langfuse.openai import openai
 from langfuse.decorators import observe
@@ -25,9 +27,7 @@ os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
 
 openai.api_key = settings.OPENAI_API_KEY
 
-
-@observe()
-async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def retrieve_active_agent(update: Update) ->Union[None, LangChanAgent]:
     chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
@@ -36,10 +36,38 @@ async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     agent = AgentManager().get(active_agent.agent_id)
+    return agent
+
+
+@observe()
+async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent = await retrieve_active_agent(update)
+
+    if agent is None:
+        return
 
     reply = agent.answer(update.message.text)
 
     await update.message.reply_text(reply)
+
+
+async def get_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent = await retrieve_active_agent(update)
+    if agent is None:
+        return
+
+    description = context.args[0]
+    if not description:
+        await update.message.reply_text("Please provide Screenshot description")
+        return
+
+    image_bytes, image_name = agent.get_image(update.message.text)
+    await update.message.reply_document(
+        document=image_bytes,
+        write_timeout=500,
+        filename=image_name,
+        reply_to_message_id=update.message.id
+    )
 
 
 async def get_agents(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -92,7 +120,8 @@ async def post_init(application: Application):
     await application.bot.set_my_commands([
         BotCommand("/agents", "Get list of available agents"),
         BotCommand("/activate", "Activate an agent by name"),
-        BotCommand("/active", "Get active agent name")
+        BotCommand("/active", "Get active agent name"),
+        BotCommand("/screenshot", "Get screenshot of the video")
     ])
     load_agents()
 
@@ -109,6 +138,7 @@ def main():
     application.add_handler(CommandHandler("agents", get_agents, has_args=False))
     application.add_handler(CommandHandler("activate", activate_agent, has_args=True))
     application.add_handler(CommandHandler("active", get_active_agent, has_args=False))
+    application.add_handler(CommandHandler("screenshot", get_screenshot, has_args=True))
     application.run_polling()
 
 

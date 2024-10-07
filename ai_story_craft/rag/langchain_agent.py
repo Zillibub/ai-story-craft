@@ -1,6 +1,7 @@
 import json
 import ffmpeg
 import shutil
+from typing import Tuple
 from pathlib import Path
 from langchain_chroma import Chroma
 from langchain.vectorstores import VectorStore
@@ -21,6 +22,7 @@ openai.api_key = settings.OPENAI_API_KEY
 class LangChanAgent:
     metadata_path: str = "description.txt"
     vectorstore_path: str = "vectorstore"
+    screenshot_extension: str = "png"
 
     def __init__(
             self,
@@ -55,7 +57,7 @@ class LangChanAgent:
 
         return rag_chain.invoke(question).content
 
-    def get_image_timestamp(self, description: str) -> str:
+    def get_image(self, description: str) -> Tuple[bytes, str]:
         docs = self.retriever.invoke(description)
         prompt = ChatPromptTemplate(
             messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
@@ -68,20 +70,33 @@ class LangChanAgent:
                 | prompt
                 | self.llm
         )
-        return rag_chain.invoke(description + ", Subtitles: " + "\n\n".join(doc.page_content for doc in docs)).content
 
-    def get_image(self, description: str) -> bytes:
-        timestamp = float(self.get_image_timestamp(description))
+        image_timestamp = rag_chain.invoke(
+            description + ", Subtitles: " + "\n\n".join(doc.page_content for doc in docs)
+        ).content
+
+        prompt = ChatPromptTemplate(
+            messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
+                input_variables=['description', 'context'],
+                template=ProductManager.get_image_name
+            ))]
+        )
+        rag_chain = (
+                {"description": RunnablePassthrough()}
+                | prompt
+                | self.llm
+        )
+        image_file_name = rag_chain.invoke(description).content + f".{self.screenshot_extension}"
 
         process =(
             ffmpeg
-            .input(self.video_path, ss=timestamp)
+            .input(self.video_path, ss=image_timestamp)
             .output('pipe:', vframes=1, format='image2', vcodec='png')
             .run_async(pipe_stdout=True, pipe_stderr=True)
         )
         image_bytes, _ = process.communicate()
 
-        return image_bytes
+        return image_bytes, image_file_name
 
     @classmethod
     def create(

@@ -17,6 +17,12 @@ class ProductManager:
     Description: {description} \nAnswer:
     """
 
+    get_image_name: str = """You are provided with a description for a requested image. 
+    Return proper image name. It should ber shorter than 100 symbols, no spaced or special characters and without 
+    extension. Return only the file name. \n
+    Description: {description} \nAnswer:
+    """
+
     assistant_description_prompt: str = """
     Create an assistant description based on provided documentation. It should be no more than 400 symbols.
     it should clearly describe with content of the documentation. Do not add any links to the sources. 
