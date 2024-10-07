@@ -7,14 +7,16 @@ from telegram.ext import (
     CommandHandler,
     filters,
 )
-import time
 import os
+import tempfile
+from typing import Union
+from pathlib import Path
 from langfuse.openai import openai
 from langfuse.decorators import observe
 from collections import deque, defaultdict
-from assistant import answer as assistant_answer
-from db.models_crud import AssistantCRUD, ActiveAssistantCRUD
-from session_identifier import TimeoutSessoinIdentifier
+from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
+from rag.agent_manager import AgentManager
+from rag.langchain_agent import LangChanAgent
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -23,95 +25,120 @@ os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY
 os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
 os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
 
-openai.api_key = settings.openai_api_key
+openai.api_key = settings.OPENAI_API_KEY
+
+async def retrieve_active_agent(update: Update) ->Union[None, LangChanAgent]:
+    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
+    active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
+
+    if active_agent is None:
+        await update.message.reply_text("No agent is currently active. Please activate an agent first.")
+        return
+
+    agent = AgentManager().get(active_agent.agent_id)
+    return agent
 
 
 @observe()
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    active_assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
+    agent = await retrieve_active_agent(update)
 
-    if active_assistant is None:
-        await update.message.reply_text("No assistant is currently active. Please activate an assistant first.")
+    if agent is None:
         return
 
-    reply = await assistant_answer(
-        chat_id=update.message.chat_id,
-        session_evaluator=TimeoutSessoinIdentifier(update.message.chat_id, timeout=settings.new_session_timeout),
-        prompt=update.message.text, active_assistant_id=active_assistant.assistant.external_id
-    )
+    reply = agent.answer(update.message.text)
 
     await update.message.reply_text(reply)
 
 
-async def get_assistants(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    assistants = AssistantCRUD().get_list()
-    reply = "Available assistants:\n" + "\t\n".join([assistant.name for assistant in assistants])
+async def get_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent = await retrieve_active_agent(update)
+    if agent is None:
+        return
+
+    description = context.args[0]
+    if not description:
+        await update.message.reply_text("Please provide Screenshot description")
+        return
+
+    image_bytes, image_name = agent.get_image(update.message.text)
+    await update.message.reply_document(
+        document=image_bytes,
+        write_timeout=500,
+        filename=image_name,
+        reply_to_message_id=update.message.id
+    )
+
+
+async def get_agents(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agents = AgentCRUD().get_list()
+    if len(agents) == 0:
+        reply = "No agents available."
+    else:
+        reply = "Available agents:\n" + "\t\n".join([agent.name for agent in agents])
     await update.message.reply_text(reply)
 
 
-async def get_active_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    active_assistant = ActiveAssistantCRUD().get_active_assistant(update.message.chat_id)
+async def get_active_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
+    active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
-    if active_assistant:
-        await update.message.reply_text(f"Active assistant: {active_assistant.assistant.name}")
-    else:
-        await update.message.reply_text("No active assistant.")
-
-
-async def activate_assistant(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    assistant_name = context.args[0]
-    assistant = AssistantCRUD().get_by_name(assistant_name)
-    if assistant is None:
-        await update.message.reply_text(f"Assistant {assistant_name} not found.")
-        return
-
-    active_assistant = ActiveAssistantCRUD().activate_assistant(update.message.chat_id, assistant.id)
-
-    if active_assistant:
-        await update.message.reply_text(f"Assistant {assistant_name} activated.")
-    else:
-        await update.message.reply_text(f"Error activating assistant {assistant_name}.")
-
-
-@observe()
-async def openai_answer(question, assistant_id, thread_id):
-    openai.beta.threads.messages.create(
-        thread_id=thread_id,
-        content=question,
-        role="user"
-    )
-    run = openai.beta.threads.runs.create(
-        thread_id=thread_id,
-        assistant_id=assistant_id,
-        # instructions=question
-    )
-    while run.status == "queued" or run.status == "in_progress":
-        run = openai.beta.threads.runs.retrieve(
-            thread_id=thread_id,
-            run_id=run.id,
+    if active_agent:
+        await update.message.reply_text(
+            f"Active agent: {active_agent.agent.name} \n\n "
+            f"Description: {active_agent.agent.description} \n"
+            f"Id: {active_agent.agent.id}"
         )
-        time.sleep(0.2)
+    else:
+        await update.message.reply_text("No active agent.")
 
-    messages = openai.beta.threads.messages.list(
-        thread_id=thread_id
-    )
-    return messages
+
+async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent_name = context.args[0]
+    if not agent_name:
+        await update.message.reply_text("Please provide an agent name.")
+        return
+
+    agent = AgentCRUD().get_by_name(agent_name)
+    if agent is None:
+        await update.message.reply_text(f"agent {agent_name} not found.")
+        return
+
+    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
+    if chat is None:
+        chat = ChatCRUD().create(chat_id=update.message.chat_id)
+
+    active_agent = ActiveAgentCRUD().activate_agent(chat.id, agent.id)
+
+    if active_agent:
+        await update.message.reply_text(f"agent {agent_name} activated.")
+    else:
+        await update.message.reply_text(f"Error activating agent {agent_name}.")
 
 
 async def post_init(application: Application):
     await application.bot.set_my_commands([
-        BotCommand("/assistants", "Get list of available assistants"),
-        BotCommand("/activate", "Activate an assistant by name"),
-        BotCommand("/active", "Get active assistant name")
+        BotCommand("/agents", "Get list of available agents"),
+        BotCommand("/activate", "Activate an agent by name"),
+        BotCommand("/active", "Get active agent name"),
+        BotCommand("/screenshot", "Get screenshot of the video")
     ])
+    load_agents()
+
+def load_agents():
+    agents = AgentCRUD().get_list()
+    for agent in agents:
+        AgentManager().add(agent.id, LangChanAgent.load(Path(agent.agent_dir)))
+
 
 
 def main():
     application = Application.builder().token(settings.telegram_bot_token).post_init(post_init).build()
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, answer))
-    application.add_handler(CommandHandler("assistants", get_assistants, has_args=False))
-    application.add_handler(CommandHandler("activate", activate_assistant, has_args=True))
-    application.add_handler(CommandHandler("active", get_active_assistant, has_args=False))
+    application.add_handler(CommandHandler("agents", get_agents, has_args=False))
+    application.add_handler(CommandHandler("activate", activate_agent, has_args=True))
+    application.add_handler(CommandHandler("active", get_active_agent, has_args=False))
+    application.add_handler(CommandHandler("screenshot", get_screenshot, has_args=True))
     application.run_polling()
 
 

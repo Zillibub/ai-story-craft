@@ -7,7 +7,7 @@ from pathlib import Path
 from core.settings import settings
 
 
-def extract_subtitles(video_path: Path, output_path: Path):
+def extract_subtitles(video_path: Path, output_path: Path, language: str = "english"):
     if not video_path.exists():
         raise FileNotFoundError(f"Video file not found: {video_path}")
     model = whisper.load_model(settings.whisper_model)
@@ -19,10 +19,10 @@ def extract_subtitles(video_path: Path, output_path: Path):
             acodec="pcm_s16le", ac=1, ar="16k"
         ).run(quiet=True, overwrite_output=True)
 
-        result = model.transcribe(audio_path)
+        result = model.transcribe(audio_path, language=language)
 
         with open(output_path, "w", encoding="utf-8") as srt:
-            json.dump(result["segments"], srt)
+            json.dump(result, srt)
 
 
 def write_srt(transcript: Iterator[dict], file: TextIO):

@@ -1,8 +1,8 @@
 import argparse
 from pathlib import Path
-from assistant import create_assistant
+from rag.langchain_agent import LangChanAgent
 from subtitles_extractor import extract_subtitles
-from db.models_crud import AssistantCRUD
+from db.models_crud import AgentCRUD
 
 
 class StoryCraft:
@@ -13,19 +13,37 @@ class StoryCraft:
 
         self.work_directory.mkdir(exist_ok=True)
 
-    def evaluate(self, assistant_name: str = None):
+    def evaluate(
+            self,
+            assistant_name: str = None,
+            language: str = None,
+            overwrite: bool = False
+    ):
         if not self.work_directory.exists():
             self.work_directory.mkdir()
 
-        subtitles_path = self.work_directory / 'subtitles.txt'
+        subtitles_path = self.work_directory / 'subtitles.json'
         if not subtitles_path.exists():
-            extract_subtitles(self.video_path, subtitles_path)
+            extract_subtitles(
+                self.video_path,
+                subtitles_path,
+                language=language
+            )
 
-        assistant = create_assistant(
-            name=assistant_name or f"assistant_{self.work_directory.name}",
-            subtitle_file=subtitles_path
+        agent_dir = self.work_directory / 'agent'
+
+        agent = LangChanAgent.create(
+            name=assistant_name or self.video_path.stem,
+            video_path=self.video_path,
+            subtitle_file_path=subtitles_path,
+            agent_dir=agent_dir,
+            overwrite=overwrite
         )
-        AssistantCRUD().create(external_id=assistant.id, name=assistant.name)
+        AgentCRUD().create(
+            name=agent.name,
+            description=agent.description,
+            agent_dir=str(agent_dir)
+        )
 
 
 if __name__ == '__main__':
@@ -37,5 +55,13 @@ if __name__ == '__main__':
                         help='Path to the output working directory')
     parser.add_argument('-a', '--assistant_name', type=str, required=False,
                         help='Path to the output working directory')
+    parser.add_argument('-l', '--language', type=str, required=False,
+                        help='Language for subtitles extraction')
+    parser.add_argument('-o', '--overwrite', type=bool, required=False,
+                        help='Override folder if exists')
     args = parser.parse_args()
-    StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate(assistant_name=args.assistant_name)
+    StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate(
+        assistant_name=args.assistant_name,
+        language=args.language,
+        overwrite=args.overwrite
+    )

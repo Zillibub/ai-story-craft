@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, CheckConstraint, Enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
@@ -16,25 +16,26 @@ class Chat(Base):
     chat_type = Column(Enum('telegram', name='chat_types'), default='telegram')
 
 
-class Assistant(Base):
-    __tablename__ = 'assistants'
+class Agent(Base):
+    __tablename__ = 'agents'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    external_id = Column(String, nullable=False)
     name = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, default=func.now())
+    agent_dir = Column(String, nullable=False)
+    description = Column(String, nullable=True)
 
 
-class ActiveAssistant(Base):
-    __tablename__ = 'active_assistants'
+class ActiveAgent(Base):
+    __tablename__ = 'active_agents'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(Integer, ForeignKey('chats.id'))
-    assistant_id = Column(Integer, ForeignKey('assistants.id'))
+    agent_id = Column(Integer, ForeignKey('agents.id'))
     activated_at = Column(DateTime, default=func.now())
 
     chat = relationship('Chat')
-    assistant = relationship('Assistant')
+    agent = relationship('Agent')
 
 
 class Message(Base):
@@ -42,7 +43,7 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     chat_id = Column(Integer, ForeignKey('chats.id'))
-    assistant_id = Column(Integer, ForeignKey('assistants.id'))
+    agent_id = Column(Integer, ForeignKey('agents.id'))
 
     session_id = Column(String, nullable=False)
     message = Column(String, nullable=False)
@@ -50,4 +51,4 @@ class Message(Base):
     created_at = Column(DateTime, default=func.now())
 
     chat = relationship('Chat')
-    assistant = relationship('Assistant')
+    agent = relationship('Agent')

@@ -5,7 +5,7 @@ from pydantic import ConfigDict
 class Settings(BaseSettings):
     whisper_model: str = 'medium'
     assistant_model: str = 'gpt-4o'
-    openai_api_key: str
+    OPENAI_API_KEY: str
 
     telegram_bot_token: str
     new_session_timeout: int = 3600

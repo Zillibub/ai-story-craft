@@ -1,19 +1,20 @@
 import openai
 import time
+from typing import Tuple
 from agents import ProductManager
 from pathlib import Path
 from core.settings import settings
 from openai.resources.beta.assistants import Assistant
 from langfuse.decorators import langfuse_context
 from langfuse.decorators import observe
-from session_evaluator import BaseSessionEvaluator
+from session_identifier import BaseSessionIdentifier
 from db.models_crud import ChatCRUD, MessageCRUD
 
 
 def create_assistant(
         name: str,
         subtitle_file: Path,
-) -> Assistant:
+) -> Tuple[Assistant, str]:
     """
     Create an assistant with a file search tool from a given subtitle path file.
     :param name:
@@ -23,7 +24,7 @@ def create_assistant(
     if not subtitle_file.exists():
         raise FileNotFoundError(f"Subtitle file not found: {subtitle_file}")
 
-    client = openai.Client(api_key=settings.openai_api_key)
+    client = openai.Client(api_key=settings.OPENAI_API_KEY)
     vector_store = client.beta.vector_stores.create(name=subtitle_file.stem)
 
     file_batch = client.beta.vector_stores.file_batches.upload_and_poll(
@@ -39,11 +40,17 @@ def create_assistant(
         tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
         tools=[{"type": "file_search"}]
     )
-    return assistant
+
+    description = openai_answer(
+        ProductManager.assistant_description_prompt,
+        assistant.id,
+        openai.beta.threads.create().id
+    ).data[0].content[0].text.value
+    return assistant, description
 
 
 @observe()
-async def openai_answer(question, assistant_id, thread_id):
+def openai_answer(question, assistant_id, thread_id):
     openai.beta.threads.messages.create(
         thread_id=thread_id,
         content=question,
@@ -54,10 +61,13 @@ async def openai_answer(question, assistant_id, thread_id):
         assistant_id=assistant_id,
         # instructions=question
     )
+
     while run.status == "queued" or run.status == "in_progress":
-        run = openai.beta.threads.runs.retrieve(
+        run = openai.beta.threads.runs.steps.retrieve(
             thread_id=thread_id,
             run_id=run.id,
+            step_id='step-123',
+            extra_query={'include': 'step_details.tool_calls[*].file_search.results[*].content'}
         )
         time.sleep(0.2)
 
@@ -70,7 +80,7 @@ async def openai_answer(question, assistant_id, thread_id):
 @observe()
 async def answer(
         chat_id,
-        session_evaluator: BaseSessionEvaluator,
+        session_evaluator: BaseSessionIdentifier,
         prompt,
         active_assistant_id
 
@@ -86,7 +96,7 @@ async def answer(
         if not chat:
             raise ValueError(f"Chat with id {chat_id} not found")
 
-    session_id = session_evaluator.evaluate()
+    session_id = session_evaluator.identify()
 
     langfuse_context.update_current_trace(
         user_id=chat_id,
@@ -97,7 +107,7 @@ async def answer(
     context = " ".join([message.text for message in messages_history])
 
     question = context + prompt
-    result = await openai_answer(
+    result = openai_answer(
         question,
         active_assistant_id,
         chat.openai_thread_id
