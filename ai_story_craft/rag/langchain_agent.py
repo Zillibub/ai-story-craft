@@ -48,7 +48,25 @@ class LangChanAgent:
     def _format_docs(docs):
         return "\n\n".join(doc.page_content for doc in docs)
 
-    def answer(self, question: str) -> str:
+    def _contextualize(self, question: str, message_history) -> str:
+
+        rag_chain = (
+                {"history": lambda x: str(list(message_history)), "question": RunnablePassthrough()}
+                | ChatPromptTemplate(
+                    messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
+                        input_variables=['history', 'question'], template=ProductManager.contextualize
+                    ))]
+                )
+                | self.llm
+        )
+
+        return rag_chain.invoke(question).content
+
+    def answer(self, question: str, message_history = None) -> str:
+
+        if message_history:
+            question = self._contextualize(question, message_history)
+
         rag_chain = (
                 {"context": self.retriever | self._format_docs, "question": RunnablePassthrough()}
                 | self.prompt

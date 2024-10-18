@@ -9,6 +9,13 @@ class ProductManager:
         Question: {question} \nContext: {context} \nAnswer:
         """
 
+    contextualize: str = """Given a chat history and the latest user question \
+        which might reference context in the chat history, formulate a standalone question \
+        which can be understood without the chat history. Do NOT answer the question, \
+        just reformulate it if needed and otherwise return it as is. \n
+        Question: {question} \nChat history: {history} \nAnswer:
+    """
+
     get_image_timestamp: str = """You are a senior product manager who analyses the product videos.
     You are provided with a set of video subtitles. and you need to find the timestamp of the image in the 
     video based on the provided description.
