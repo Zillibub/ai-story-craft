@@ -8,11 +8,11 @@ from telegram.ext import (
     filters,
 )
 import os
-import tempfile
 from typing import Union
 from pathlib import Path
-from langfuse.openai import openai
-from langfuse.decorators import observe
+import openai
+# from langfuse.openai import openai
+# from langfuse.decorators import observe
 from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from rag.agent_manager import AgentManager
@@ -21,9 +21,9 @@ from rag.langchain_agent import LangChanAgent
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
 
-os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY
-os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
-os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
+# os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY
+# os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY
+# os.environ["LANGFUSE_HOST"] = settings.LANGFUSE_HOST
 
 openai.api_key = settings.OPENAI_API_KEY
 
@@ -39,14 +39,18 @@ async def retrieve_active_agent(update: Update) ->Union[None, LangChanAgent]:
     return agent
 
 
-@observe()
+# @observe()
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agent = await retrieve_active_agent(update)
 
     if agent is None:
         return
 
-    reply = agent.answer(update.message.text)
+    question = update.message.text
+
+    reply = agent.answer(question, conversation_history[update.message.chat_id])
+
+    conversation_history[update.message.chat_id].append({'question': question, 'answer': reply})
 
     await update.message.reply_text(reply)
 
