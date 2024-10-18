@@ -22,6 +22,7 @@ openai.api_key = settings.OPENAI_API_KEY
 class LangChanAgent:
     metadata_path: str = "description.txt"
     vectorstore_path: str = "vectorstore"
+    subtitle_raw_text_path: str = 'subtitles.txt'
     screenshot_extension: str = "png"
 
     def __init__(
@@ -29,7 +30,8 @@ class LangChanAgent:
             name: str,
             vector_store: VectorStore,
             video_path: Path,
-            description: str
+            description: str,
+            raw_text: str
     ):
         self.name = name
         self.llm = ChatOpenAI(model=settings.assistant_model, openai_api_key=settings.OPENAI_API_KEY)
@@ -37,6 +39,7 @@ class LangChanAgent:
         self.retriever = self.vector_store.as_retriever()
         self.video_path = video_path
         self.description = description
+        self.raw_text = raw_text
 
         self.prompt = ChatPromptTemplate(
             messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
@@ -74,6 +77,20 @@ class LangChanAgent:
         )
 
         return rag_chain.invoke(question).content
+
+    def create_user_story_map(self) -> str:
+
+        rag_chain = (
+            {"subtitles": self.retriever | self._format_docs}
+            | ChatPromptTemplate(
+                messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
+                    input_variables=['context'], template=ProductManager.user_story_mapping
+                ))]
+            )
+            | self.llm
+        )
+
+        return rag_chain.invoke().content
 
     def get_image(self, description: str) -> Tuple[bytes, str]:
         docs = self.retriever.invoke(description)
@@ -163,11 +180,15 @@ class LangChanAgent:
                 'video_path': str(video_path)
             }, f)
 
+        with open(agent_dir / cls.subtitle_raw_text_path, 'w') as f:
+            f.write(subtitles['text'])
+
         return cls(
             name=name,
             vector_store=vectorstore,
             description=description,
-            video_path=video_path
+            video_path=video_path,
+            raw_text=subtitles['text']
         )
 
     @classmethod
@@ -182,9 +203,13 @@ class LangChanAgent:
             name = metadata['name']
             video_path = Path(metadata['video_path'])
 
+        with open(agent_dir / cls.subtitle_raw_text_path, 'r') as f:
+            raw_text = f.read()
+
         return cls(
             name=name,
             vector_store=vectorstore,
             description=description,
-            video_path=video_path
+            video_path=video_path,
+            raw_text=raw_text
         )

@@ -119,6 +119,11 @@ async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(f"Error activating agent {agent_name}.")
 
+async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent = await retrieve_active_agent(update)
+    if agent is None:
+        return
+
 
 async def post_init(application: Application):
     await application.bot.set_my_commands([
