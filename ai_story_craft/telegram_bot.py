@@ -7,7 +7,6 @@ from telegram.ext import (
     CommandHandler,
     filters,
 )
-import os
 from typing import Union
 from pathlib import Path
 import openai
@@ -127,9 +126,9 @@ async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def post_init(application: Application):
     await application.bot.set_my_commands([
-        BotCommand("/agents", "Get list of available agents"),
-        BotCommand("/activate", "Activate an agent by name"),
-        BotCommand("/active", "Get active agent name"),
+        BotCommand("/videos", "Get list of available Videos"),
+        BotCommand("/select", "Select a video for analysis"),
+        BotCommand("/selected", "Get selected for analysis video"),
         BotCommand("/screenshot", "Get screenshot of the video")
     ])
     load_agents()
@@ -144,9 +143,9 @@ def load_agents():
 def main():
     application = Application.builder().token(settings.telegram_bot_token).post_init(post_init).build()
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, answer))
-    application.add_handler(CommandHandler("agents", get_agents, has_args=False))
-    application.add_handler(CommandHandler("activate", activate_agent, has_args=True))
-    application.add_handler(CommandHandler("active", get_active_agent, has_args=False))
+    application.add_handler(CommandHandler("videos", get_agents, has_args=False))
+    application.add_handler(CommandHandler("select", activate_agent, has_args=True))
+    application.add_handler(CommandHandler("selected", get_active_agent, has_args=False))
     application.add_handler(CommandHandler("screenshot", get_screenshot, has_args=True))
     application.run_polling()
 
