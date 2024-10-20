@@ -1,5 +1,22 @@
 from dataclasses import dataclass
 
+@dataclass
+class Formatter:
+    """
+    Can be used to format text in different ways.
+    """
+
+    telegram_formatting: str = """
+        You are given a text. Format it to your best judgement based on these rules: 
+        <b>text</b> - Bold text, <i>text</i> - Italicize text, <u>text</u> - Underline text, 
+        <s>text</s> - Strikethrough text, <code>text</code> - highlight part of a piece of code, 
+        <a href="http://www.example.com/">text</a>	Creates a hyperlink to the selected text. 
+        
+        DO NOT change the text content. 
+        
+        Text: {text} \nAnswer:
+    """
+
 
 @dataclass
 class ProductManager:
@@ -42,14 +59,8 @@ class ProductManager:
         Each task should have the folloing information: 
         1. Name 2. Description 3. Goal 4. Reason 
         
-        Return only user story map. Use only provided information. 
+        Return only user story map. Use only provided information.  
+        
+        Video subtitles: {subtitles} \nAnswer:
     """
 
-    telegram_formatting: str = """
-        You are given a text. Format it to your best judgement based on these rules: 
-        <b>text</b> - Bold text, <i>text</i> - Italicize text, <u>text</u> - Underline text, 
-        <s>text</s> - Strikethrough text, <code>text</code> - highlight part of a piece of code, 
-        <tg-spoiler>text</tg-spoiler> - spoiler formatting that hides the selected text, 
-        <a href="http://www.example.com/">text</a>	Creates a hyperlink to the selected text. 
-        Do not change text content. 
-    """

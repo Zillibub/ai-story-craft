@@ -11,8 +11,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
 from langchain_core.documents.base import Document
+from langchain_core.output_parsers import StrOutputParser
 from core.settings import settings
-from agents import ProductManager
+from rag.agents import ProductManager, Formatter
 from langfuse.openai import openai
 
 
@@ -80,17 +81,20 @@ class LangChanAgent:
 
     def create_user_story_map(self) -> str:
 
+        with open(self.raw_text, 'r') as f:
+            subtitles = f.read()
+
         rag_chain = (
-            {"subtitles": self.retriever | self._format_docs}
-            | ChatPromptTemplate(
-                messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
-                    input_variables=['context'], template=ProductManager.user_story_mapping
-                ))]
-            )
-            | self.llm
+            ChatPromptTemplate.from_template(ProductManager.user_story_mapping) | self.llm | StrOutputParser()
         )
 
-        return rag_chain.invoke().content
+        return rag_chain.invoke({"subtitles": subtitles})
+
+    def apply_telegram_formating(self, text: str):
+        rag_chain = (
+                ChatPromptTemplate.from_template(Formatter.telegram_formatting) | self.llm | StrOutputParser()
+        )
+        return rag_chain.invoke({"text": text})
 
     def get_image(self, description: str) -> Tuple[bytes, str]:
         docs = self.retriever.invoke(description)
