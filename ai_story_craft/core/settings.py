@@ -14,9 +14,9 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
 
-    LANGFUSE_HOST: str = 'http://localhost:3000'
-    LANGFUSE_PUBLIC_KEY: str
-    LANGFUSE_SECRET_KEY: str
+    # LANGFUSE_HOST: str = 'http://localhost:3000'
+    # LANGFUSE_PUBLIC_KEY: str
+    # LANGFUSE_SECRET_KEY: str
 
     model_config = ConfigDict(extra='ignore')
 

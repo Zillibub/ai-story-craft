@@ -124,8 +124,8 @@ async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     story_map = agent.create_user_story_map()
-    story_map = agent.apply_telegram_formating(story_map)
-    await update.message.reply_text(story_map)
+    story_map = agent.apply_telegram_formating(story_map)[:4096]
+    await update.message.reply_text(story_map, parse_mode="HTML")
 
 
 

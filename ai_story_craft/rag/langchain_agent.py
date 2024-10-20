@@ -32,7 +32,7 @@ class LangChanAgent:
             vector_store: VectorStore,
             video_path: Path,
             description: str,
-            raw_text: str
+            raw_text_path: Path
     ):
         self.name = name
         self.llm = ChatOpenAI(model=settings.assistant_model, openai_api_key=settings.OPENAI_API_KEY)
@@ -40,7 +40,7 @@ class LangChanAgent:
         self.retriever = self.vector_store.as_retriever()
         self.video_path = video_path
         self.description = description
-        self.raw_text = raw_text
+        self.raw_text_path = raw_text_path
 
         self.prompt = ChatPromptTemplate(
             messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
@@ -81,7 +81,7 @@ class LangChanAgent:
 
     def create_user_story_map(self) -> str:
 
-        with open(self.raw_text, 'r') as f:
+        with open(self.raw_text_path, 'r') as f:
             subtitles = f.read()
 
         rag_chain = (
@@ -192,7 +192,7 @@ class LangChanAgent:
             vector_store=vectorstore,
             description=description,
             video_path=video_path,
-            raw_text=subtitles['text']
+            raw_text_path=agent_dir / cls.subtitle_raw_text_path
         )
 
     @classmethod
@@ -215,5 +215,5 @@ class LangChanAgent:
             vector_store=vectorstore,
             description=description,
             video_path=video_path,
-            raw_text=raw_text
+            raw_text_path=agent_dir / cls.subtitle_raw_text_path
         )
