@@ -7,7 +7,6 @@ from telegram.ext import (
     CommandHandler,
     filters,
 )
-import os
 from typing import Union
 from pathlib import Path
 import openai
@@ -32,7 +31,7 @@ async def retrieve_active_agent(update: Update) ->Union[None, LangChanAgent]:
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
     if active_agent is None:
-        await update.message.reply_text("No agent is currently active. Please activate an agent first.")
+        await update.message.reply_text("No video is currently selected. Please select a video first.")
         return
 
     agent = AgentManager().get(active_agent.agent_id)
@@ -77,9 +76,9 @@ async def get_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_agents(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agents = AgentCRUD().get_list()
     if len(agents) == 0:
-        reply = "No agents available."
+        reply = "No videos available."
     else:
-        reply = "Available agents:\n" + "\t\n".join([agent.name for agent in agents])
+        reply = "Available videos:\n" + "\t\n".join([agent.name for agent in agents])
     await update.message.reply_text(reply)
 
 
@@ -89,23 +88,23 @@ async def get_active_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if active_agent:
         await update.message.reply_text(
-            f"Active agent: {active_agent.agent.name} \n\n "
+            f"Active video: {active_agent.agent.name} \n\n "
             f"Description: {active_agent.agent.description} \n"
             f"Id: {active_agent.agent.id}"
         )
     else:
-        await update.message.reply_text("No active agent.")
+        await update.message.reply_text("No active video.")
 
 
 async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agent_name = context.args[0]
     if not agent_name:
-        await update.message.reply_text("Please provide an agent name.")
+        await update.message.reply_text("Please provide an video name.")
         return
 
     agent = AgentCRUD().get_by_name(agent_name)
     if agent is None:
-        await update.message.reply_text(f"agent {agent_name} not found.")
+        await update.message.reply_text(f"Video {agent_name} not found.")
         return
 
     chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
@@ -115,17 +114,29 @@ async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     active_agent = ActiveAgentCRUD().activate_agent(chat.id, agent.id)
 
     if active_agent:
-        await update.message.reply_text(f"agent {agent_name} activated.")
+        await update.message.reply_text(f"Video {agent_name} Selected.")
     else:
-        await update.message.reply_text(f"Error activating agent {agent_name}.")
+        await update.message.reply_text(f"Error activating video {agent_name}.")
+
+async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent = await retrieve_active_agent(update)
+    if agent is None:
+        return
+
+    story_map = agent.create_user_story_map()
+    story_map = agent.apply_telegram_formating(story_map)[:4096]
+    await update.message.reply_text(story_map, parse_mode="HTML")
+
 
 
 async def post_init(application: Application):
     await application.bot.set_my_commands([
-        BotCommand("/agents", "Get list of available agents"),
-        BotCommand("/activate", "Activate an agent by name"),
-        BotCommand("/active", "Get active agent name"),
-        BotCommand("/screenshot", "Get screenshot of the video")
+        BotCommand("/videos", "Get list of available Videos"),
+        BotCommand("/select", "Select a video for analysis"),
+        BotCommand("/selected", "Get selected for analysis video"),
+        BotCommand("/screenshot", "Get screenshot of the video"),
+        BotCommand("/story_map", "Create a user story map for selected video")
+
     ])
     load_agents()
 
@@ -139,10 +150,11 @@ def load_agents():
 def main():
     application = Application.builder().token(settings.telegram_bot_token).post_init(post_init).build()
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, answer))
-    application.add_handler(CommandHandler("agents", get_agents, has_args=False))
-    application.add_handler(CommandHandler("activate", activate_agent, has_args=True))
-    application.add_handler(CommandHandler("active", get_active_agent, has_args=False))
+    application.add_handler(CommandHandler("videos", get_agents, has_args=False))
+    application.add_handler(CommandHandler("select", activate_agent, has_args=True))
+    application.add_handler(CommandHandler("selected", get_active_agent, has_args=False))
     application.add_handler(CommandHandler("screenshot", get_screenshot, has_args=True))
+    application.add_handler(CommandHandler("story_map", create_story_map, has_args=False))
     application.run_polling()
 
 

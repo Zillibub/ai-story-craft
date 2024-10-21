@@ -1,7 +1,7 @@
 import openai
 import time
 from typing import Tuple
-from agents import ProductManager
+from rag.agents import ProductManager
 from pathlib import Path
 from core.settings import settings
 from openai.resources.beta.assistants import Assistant

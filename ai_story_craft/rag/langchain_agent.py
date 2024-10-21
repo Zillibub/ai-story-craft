@@ -11,8 +11,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
 from langchain_core.documents.base import Document
+from langchain_core.output_parsers import StrOutputParser
 from core.settings import settings
-from agents import ProductManager
+from rag.agents import ProductManager, Formatter
 from langfuse.openai import openai
 
 
@@ -22,6 +23,7 @@ openai.api_key = settings.OPENAI_API_KEY
 class LangChanAgent:
     metadata_path: str = "description.txt"
     vectorstore_path: str = "vectorstore"
+    subtitle_raw_text_path: str = 'subtitles.txt'
     screenshot_extension: str = "png"
 
     def __init__(
@@ -29,7 +31,8 @@ class LangChanAgent:
             name: str,
             vector_store: VectorStore,
             video_path: Path,
-            description: str
+            description: str,
+            raw_text_path: Path
     ):
         self.name = name
         self.llm = ChatOpenAI(model=settings.assistant_model, openai_api_key=settings.OPENAI_API_KEY)
@@ -37,6 +40,7 @@ class LangChanAgent:
         self.retriever = self.vector_store.as_retriever()
         self.video_path = video_path
         self.description = description
+        self.raw_text_path = raw_text_path
 
         self.prompt = ChatPromptTemplate(
             messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
@@ -74,6 +78,23 @@ class LangChanAgent:
         )
 
         return rag_chain.invoke(question).content
+
+    def create_user_story_map(self) -> str:
+
+        with open(self.raw_text_path, 'r') as f:
+            subtitles = f.read()
+
+        rag_chain = (
+            ChatPromptTemplate.from_template(ProductManager.user_story_mapping) | self.llm | StrOutputParser()
+        )
+
+        return rag_chain.invoke({"subtitles": subtitles})
+
+    def apply_telegram_formating(self, text: str):
+        rag_chain = (
+                ChatPromptTemplate.from_template(Formatter.telegram_formatting) | self.llm | StrOutputParser()
+        )
+        return rag_chain.invoke({"text": text})
 
     def get_image(self, description: str) -> Tuple[bytes, str]:
         docs = self.retriever.invoke(description)
@@ -163,11 +184,15 @@ class LangChanAgent:
                 'video_path': str(video_path)
             }, f)
 
+        with open(agent_dir / cls.subtitle_raw_text_path, 'w') as f:
+            f.write(subtitles['text'])
+
         return cls(
             name=name,
             vector_store=vectorstore,
             description=description,
-            video_path=video_path
+            video_path=video_path,
+            raw_text_path=agent_dir / cls.subtitle_raw_text_path
         )
 
     @classmethod
@@ -182,9 +207,13 @@ class LangChanAgent:
             name = metadata['name']
             video_path = Path(metadata['video_path'])
 
+        with open(agent_dir / cls.subtitle_raw_text_path, 'r') as f:
+            raw_text = f.read()
+
         return cls(
             name=name,
             vector_store=vectorstore,
             description=description,
-            video_path=video_path
+            video_path=video_path,
+            raw_text_path=agent_dir / cls.subtitle_raw_text_path
         )
