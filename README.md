@@ -10,4 +10,5 @@ Functionality:
 1. Chat interfaced to you video via Telegram. 
 2. Getting screenshots by text description. 
 3. "Create User Story Map" command.  
-4. (WIP) Integration with Miro. 
+4. (WIP) Integration with youtube 
+5. (WIP) Integration with Miro. 
