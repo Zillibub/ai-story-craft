@@ -21,3 +21,9 @@ services:
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       SALT: ${SALT}
+
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - "6379:6379"

@@ -13,3 +13,5 @@ openai
 pillow==10.4.0
 youtube-transcript-api==0.6.2
 pytube==15.0.0
+celery==5.4.0
+
