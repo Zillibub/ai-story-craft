@@ -11,3 +11,5 @@ langfuse==2.40.0
 numpy==1.26.4
 openai
 pillow==10.4.0
+youtube-transcript-api==0.6.2
+pytube==15.0.0
