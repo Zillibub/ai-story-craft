@@ -10,7 +10,7 @@ from core.settings import settings
 def extract_subtitles(
         video_path: Path,
         output_path: Path,
-        language: str = "english",
+        language: str = None,
         audio_path: Path = None
 ):
     if not video_path.exists():
@@ -20,10 +20,10 @@ def extract_subtitles(
     with tempfile.TemporaryDirectory() as temp_dir:
         if not audio_path:
             audio_path = Path(temp_dir, video_path.stem + '.wav')
-        ffmpeg.input(str(video_path)).output(
-            audio_path,
-            acodec="pcm_s16le", ac=1, ar="16k"
-        ).run(quiet=True, overwrite_output=True)
+            ffmpeg.input(str(video_path)).output(
+                str(audio_path),
+                acodec="pcm_s16le", ac=1, ar="16k"
+            ).run(quiet=True, overwrite_output=True)
 
         result = model.transcribe(str(audio_path), language=language)
 

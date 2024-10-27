@@ -170,11 +170,11 @@ class LangChanAgent:
         splits = text_splitter.split_documents(docs)
         vectorstore = Chroma.from_documents(
             documents=splits,
-            embedding=OpenAIEmbeddings(),
+            embedding=OpenAIEmbeddings(openai_api_key=settings.OPENAI_API_KEY),
             persist_directory=str(agent_dir / cls.vectorstore_path)
         )
 
-        llm = ChatOpenAI(model=settings.assistant_model)
+        llm = ChatOpenAI(model=settings.assistant_model, openai_api_key=settings.OPENAI_API_KEY)
         description = llm.invoke([["human", ProductManager.assistant_description_prompt]]).content
 
         with open(agent_dir / cls.metadata_path, 'w') as f:

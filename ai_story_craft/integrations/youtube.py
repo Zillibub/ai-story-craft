@@ -10,7 +10,7 @@ def parse_resolution(stream):
         return 0
 
 
-def download_video(video_url: Path, output_path: Path) -> Tuple[Path, bool]:
+def download_video(video_url: Path, output_path: Path) -> bool:
     if output_path.exists():
         raise FileExistsError(f"File already exists: {output_path}")
     yt = pytubefix.YouTube(str(video_url))
@@ -22,11 +22,12 @@ def download_video(video_url: Path, output_path: Path) -> Tuple[Path, bool]:
         raise ValueError("No video streams found")
 
     highest_resolution_stream = video_streams[0]
-    highest_resolution_stream.download(output_path)
+    highest_resolution_stream.download(output_path.parent, filename=output_path.name)
 
-    return output_path, not highest_resolution_stream.audio_codec
+    # Sometimes the audio stream is not included in the video stream, needed to be downloaded separately
+    return not highest_resolution_stream.audio_codec
 
-def download_audio(video_url: Path, output_path: Path) -> Path:
+def download_audio(video_url: Path, output_path: Path):
     if output_path.exists():
         raise FileExistsError(f"File already exists: {output_path}")
     yt = pytubefix.YouTube(str(video_url))
@@ -36,6 +37,4 @@ def download_audio(video_url: Path, output_path: Path) -> Path:
     if len(audio_streams) == 0:
         raise ValueError("No audio streams found")
 
-    audio_streams[0].download(output_path)
-
-    return output_path
+    audio_streams[0].download(output_path.parent, filename=output_path.name)

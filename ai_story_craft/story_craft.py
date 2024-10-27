@@ -17,7 +17,7 @@ class StoryCraft:
         self.video_path = video_path
         self.audio_path = audio_path
 
-        self.work_directory.mkdir()
+        self.work_directory.mkdir(exist_ok=True)
 
     def evaluate(
             self,
