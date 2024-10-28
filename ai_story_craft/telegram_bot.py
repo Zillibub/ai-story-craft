@@ -16,6 +16,7 @@ from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from rag.agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
+from celery_app import wait
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -127,6 +128,11 @@ async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
     story_map = agent.apply_telegram_formating(story_map)[:4096]
     await update.message.reply_text(story_map, parse_mode="HTML")
 
+async def add_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    video_url = context.args[0]
+    message = await update.message.reply_text(f"Starting video processing")
+    wait.delay(message)
+
 
 
 async def post_init(application: Application):
@@ -135,7 +141,8 @@ async def post_init(application: Application):
         BotCommand("/select", "Select a video for analysis"),
         BotCommand("/selected", "Get selected for analysis video"),
         BotCommand("/screenshot", "Get screenshot of the video"),
-        BotCommand("/story_map", "Create a user story map for selected video")
+        BotCommand("/story_map", "Create a user story map for selected video"),
+        BotCommand("/add_video", "Adds a video")
 
     ])
     load_agents()
@@ -155,6 +162,7 @@ def main():
     application.add_handler(CommandHandler("selected", get_active_agent, has_args=False))
     application.add_handler(CommandHandler("screenshot", get_screenshot, has_args=True))
     application.add_handler(CommandHandler("story_map", create_story_map, has_args=False))
+    application.add_handler(CommandHandler("add_video", add_video, has_args=True))
     application.run_polling()
 
 

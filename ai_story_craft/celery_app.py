@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 from celery import Celery
 from story_craft import StoryCraft
@@ -5,7 +6,7 @@ from core.settings import settings
 from urllib.parse import parse_qs, urlparse
 from integrations.youtube import download_video, download_audio
 
-celery_app = Celery("worker", broker=settings.CELERY_BROKER_URL, backend=settings.CELERY_BACKEND_URL)
+celery_app = Celery("worker", broker=settings.CELERY_BACKEND_URL,  backend=settings.CELERY_BACKEND_URL)
 
 
 @celery_app.task
@@ -32,3 +33,7 @@ def process_youtube_video(youtube_url: str):
         video_path=video_path,
         audio_path=audio_path
     ).evaluate(assistant_name=v_param[0])
+
+@celery_app.task
+def wait(message):
+    time.sleep(2)

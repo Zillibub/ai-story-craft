@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
 
-    CELERY_BROKER_URL: str = ''
-    CELERY_BACKEND_URL: str = ''
+    CELERY_BROKER_URL: str = 'pyamqp://'
+    CELERY_BACKEND_URL: str = 'redis://localhost'
 
     # LANGFUSE_HOST: str = 'http://localhost:3000'
     # LANGFUSE_PUBLIC_KEY: str
