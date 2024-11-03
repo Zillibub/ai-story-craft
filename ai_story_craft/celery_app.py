@@ -1,4 +1,5 @@
 import time
+from integrations.telegram import MessageSender
 from pathlib import Path
 from celery import Celery
 from story_craft import StoryCraft
@@ -10,9 +11,14 @@ celery_app = Celery("worker", broker=settings.CELERY_BACKEND_URL,  backend=setti
 
 
 @celery_app.task
-def process_youtube_video(youtube_url: str):
+def process_youtube_video(youtube_url: str, update_sender: MessageSender = None):
+    if update_sender:
+        update_sender.update_message("Processing video...")
     if not Path(settings.working_directory).exists():
+        if update_sender:
+            update_sender.update_message(f"Working directory not found: {settings.working_directory}")
         raise FileNotFoundError(f"Working directory not found: {settings.working_directory}")
+
     parsed_url = urlparse(youtube_url)
     query_params = parse_qs(parsed_url.query)
 
@@ -28,11 +34,17 @@ def process_youtube_video(youtube_url: str):
         audio_path = Path(settings.videos_directory, f"{v_param[0]}.wav")
         download_audio(Path(youtube_url), audio_path)
 
+    if update_sender:
+        update_sender.update_message("Importing subtitles...")
+
     StoryCraft(
         work_directory=Path(settings.working_directory),
         video_path=video_path,
         audio_path=audio_path
     ).evaluate(assistant_name=v_param[0])
+
+    if update_sender:
+        update_sender.update_message("Video processed.")
 
 @celery_app.task
 def wait(message):
