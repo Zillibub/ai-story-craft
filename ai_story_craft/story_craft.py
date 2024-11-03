@@ -33,7 +33,6 @@ class StoryCraft:
             extract_subtitles(
                 self.video_path,
                 subtitles_path,
-                language=language,
                 audio_path=self.audio_path
             )
 

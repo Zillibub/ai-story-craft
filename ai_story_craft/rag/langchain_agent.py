@@ -207,9 +207,6 @@ class LangChanAgent:
             name = metadata['name']
             video_path = Path(metadata['video_path'])
 
-        with open(agent_dir / cls.subtitle_raw_text_path, 'r') as f:
-            raw_text = f.read()
-
         return cls(
             name=name,
             vector_store=vectorstore,
