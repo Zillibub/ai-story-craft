@@ -13,6 +13,12 @@ class StoryCraft:
             video_path: Path,
             audio_path: Path = None
     ):
+        """
+
+        :param work_directory: directory to store the files for the video
+        :param video_path:
+        :param audio_path:
+        """
         self.work_directory = work_directory
         self.video_path = video_path
         self.audio_path = audio_path

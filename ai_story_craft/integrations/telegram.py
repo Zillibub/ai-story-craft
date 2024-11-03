@@ -1,4 +1,6 @@
 import telegram
+# import json
+import asyncio
 from core.settings import settings
 
 class MessageSender:
@@ -7,10 +9,10 @@ class MessageSender:
         self.chat_id = chat_id
         self.update_message_id = update_message_id
 
-    async def send_message(self, text: str):
-        await telegram.Bot(settings.telegram_bot_token).sendMessage(chat_id=self.chat_id, text=text)
+    def send_message(self, text: str):
+        asyncio.run(telegram.Bot(settings.telegram_bot_token).sendMessage(chat_id=self.chat_id, text=text))
 
-    async def update_message(self, text: str):
+    def update_message(self, text: str):
         """
         Update message
         :param text:
@@ -20,5 +22,16 @@ class MessageSender:
         if not self.update_message_id:
             raise ValueError("no update_message_id given")
 
-        await telegram.Bot(settings.telegram_bot_token).editMessageText(
-            chat_id=self.chat_id, message_id=self.update_message_id, text=text)
+        asyncio.run(telegram.Bot(settings.telegram_bot_token).editMessageText(
+            chat_id=self.chat_id, message_id=self.update_message_id, text=text))
+
+    def to_dict(self):
+        return {
+            'chat_id': self.chat_id,
+            'update_message_id': self.update_message_id
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(chat_id=data['chat_id'], update_message_id=data['update_message_id'])
+

@@ -16,7 +16,8 @@ from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from rag.agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
-from celery_app import wait
+from celery_app import process_youtube_video, wait
+from integrations.telegram import MessageSender
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -27,7 +28,8 @@ conversation_history = defaultdict(lambda: deque(maxlen=10))
 
 openai.api_key = settings.OPENAI_API_KEY
 
-async def retrieve_active_agent(update: Update) ->Union[None, LangChanAgent]:
+
+async def retrieve_active_agent(update: Update) -> Union[None, LangChanAgent]:
     chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
@@ -119,6 +121,7 @@ async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(f"Error activating video {agent_name}.")
 
+
 async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agent = await retrieve_active_agent(update)
     if agent is None:
@@ -128,11 +131,14 @@ async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
     story_map = agent.apply_telegram_formating(story_map)[:4096]
     await update.message.reply_text(story_map, parse_mode="HTML")
 
+
 async def add_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     video_url = context.args[0]
     message = await update.message.reply_text(f"Starting video processing")
-    wait.delay(message)
-
+    process_youtube_video.delay(
+        youtube_url=video_url,
+        update_sender=MessageSender(update.message.chat_id, message.message_id).to_dict()
+    )
 
 
 async def post_init(application: Application):
@@ -147,11 +153,11 @@ async def post_init(application: Application):
     ])
     load_agents()
 
+
 def load_agents():
     agents = AgentCRUD().get_list()
     for agent in agents:
         AgentManager().add(agent.id, LangChanAgent.load(Path(agent.agent_dir)))
-
 
 
 def main():
