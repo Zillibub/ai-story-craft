@@ -14,9 +14,9 @@ import openai
 # from langfuse.decorators import observe
 from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
-from rag.agent_manager import AgentManager
+from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
-from celery_app import process_youtube_video, wait
+from celery_app import process_youtube_video
 from integrations.telegram import MessageSender
 
 # Conversation history dictionary

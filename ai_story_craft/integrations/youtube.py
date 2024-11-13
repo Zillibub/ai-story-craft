@@ -20,7 +20,7 @@ def download_video(video_url: Path, output_path: Path) -> bool:
         raise FileExistsError(f"File already exists: {output_path}")
     yt = pytubefix.YouTube(str(video_url))
 
-    video_streams = yt.streams.filter(only_video=True)
+    video_streams = yt.streams.filter(only_video=True, mime_type="video/mp4")
     video_streams = sorted(video_streams, key=parse_resolution, reverse=True)
 
     if len(video_streams) == 0:

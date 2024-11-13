@@ -51,7 +51,7 @@ class StoryCraft:
             agent_dir=agent_dir,
             overwrite=overwrite
         )
-        AgentCRUD().create(
+        agent_db = AgentCRUD().create(
             name=agent.name,
             description=agent.description,
             agent_dir=str(agent_dir)
