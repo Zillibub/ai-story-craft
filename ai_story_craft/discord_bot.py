@@ -1,0 +1,179 @@
+from torchgen.gen import static_dispatch_extra_headers
+
+from core.settings import settings
+import discord
+from discord import Message
+from typing import Union
+from pathlib import Path
+import openai
+# from langfuse.openai import openai
+# from langfuse.decorators import observe
+from collections import deque, defaultdict
+from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
+from agent_manager import AgentManager
+from rag.langchain_agent import LangChanAgent
+from celery_app import process_youtube_video
+from integrations.telegram import MessageSender
+
+# Conversation history dictionary
+conversation_history = defaultdict(lambda: deque(maxlen=10))
+openai.api_key = settings.OPENAI_API_KEY
+
+client = discord.Client()
+
+class Client(discord.Client):
+    async def on_ready(self):
+        pass
+
+
+
+    async def on_message(self, message: Message):
+        if message.author == self.user:
+            return
+
+        agent = await retrieve_active_agent(message)
+
+        if agent is None:
+            return
+
+        question = message.content
+
+        reply = agent.answer(question, conversation_history[message.channel.id])
+
+        conversation_history[message.channel.id].append({'question': question, 'answer': reply})
+
+        await message.channel.send(reply)
+
+
+client = discord.Client()
+
+
+async def retrieve_active_agent(message: Message) -> Union[None, LangChanAgent]:
+    chat = ChatCRUD().get_by_external_id(str(message.channel.id))
+    active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
+
+    if active_agent is None:
+        await message.channel.send("No video is currently selected. Please select a video first.")
+        return
+
+    agent = AgentManager().get(active_agent.agent_id)
+    return agent
+
+
+async def get_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent = await retrieve_active_agent(update)
+    if agent is None:
+        return
+
+    description = context.args[0]
+    if not description:
+        await update.message.reply_text("Please provide Screenshot description")
+        return
+
+    image_bytes, image_name = agent.get_image(update.message.text)
+    await update.message.reply_document(
+        document=image_bytes,
+        write_timeout=500,
+        filename=image_name,
+        reply_to_message_id=update.message.id
+    )
+
+
+async def get_agents(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agents = AgentCRUD().get_list()
+    if len(agents) == 0:
+        reply = "No videos available."
+    else:
+        reply = "Available videos:\n" + "\t\n".join([agent.name for agent in agents])
+    await update.message.reply_text(reply)
+
+
+async def get_active_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
+    active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
+
+    if active_agent:
+        await update.message.reply_text(
+            f"Active video: {active_agent.agent.name} \n\n "
+            f"Description: {active_agent.agent.description} \n"
+            f"Id: {active_agent.agent.id}"
+        )
+    else:
+        await update.message.reply_text("No active video.")
+
+
+async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent_name = context.args[0]
+    if not agent_name:
+        await update.message.reply_text("Please provide an video name.")
+        return
+
+    agent = AgentCRUD().get_by_name(agent_name)
+    if agent is None:
+        await update.message.reply_text(f"Video {agent_name} not found.")
+        return
+
+    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
+    if chat is None:
+        chat = ChatCRUD().create(chat_id=update.message.chat_id)
+
+    active_agent = ActiveAgentCRUD().activate_agent(chat.id, agent.id)
+
+    if active_agent:
+        await update.message.reply_text(f"Video {agent_name} Selected.")
+    else:
+        await update.message.reply_text(f"Error activating video {agent_name}.")
+
+
+async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent = await retrieve_active_agent(update)
+    if agent is None:
+        return
+
+    story_map = agent.create_user_story_map()
+    story_map = agent.apply_telegram_formating(story_map)[:4096]
+    await update.message.reply_text(story_map, parse_mode="HTML")
+
+
+async def add_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    video_url = context.args[0]
+    message = await update.message.reply_text(f"Starting video processing")
+    process_youtube_video.delay(
+        youtube_url=video_url,
+        update_sender=MessageSender(update.message.chat_id, message.message_id).to_dict()
+    )
+
+
+async def post_init(application: Application):
+    await application.bot.set_my_commands([
+        BotCommand("/videos", "Get list of available Videos"),
+        BotCommand("/select", "Select a video for analysis"),
+        BotCommand("/selected", "Get selected for analysis video"),
+        BotCommand("/screenshot", "Get screenshot of the video"),
+        BotCommand("/story_map", "Create a user story map for selected video"),
+        BotCommand("/add_video", "Adds a video")
+
+    ])
+    load_agents()
+
+
+def load_agents():
+    agents = AgentCRUD().get_list()
+    for agent in agents:
+        AgentManager().add(agent.id, LangChanAgent.load(Path(agent.agent_dir)))
+
+
+def main():
+    application = Application.builder().token(settings.telegram_bot_token).post_init(post_init).build()
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, answer))
+    application.add_handler(CommandHandler("videos", get_agents, has_args=False))
+    application.add_handler(CommandHandler("select", activate_agent, has_args=True))
+    application.add_handler(CommandHandler("selected", get_active_agent, has_args=False))
+    application.add_handler(CommandHandler("screenshot", get_screenshot, has_args=True))
+    application.add_handler(CommandHandler("story_map", create_story_map, has_args=False))
+    application.add_handler(CommandHandler("add_video", add_video, has_args=True))
+    application.run_polling()
+
+
+if __name__ == "__main__":
+    main()
