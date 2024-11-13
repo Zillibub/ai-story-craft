@@ -7,9 +7,21 @@ from db.models_crud import AgentCRUD
 
 class StoryCraft:
 
-    def __init__(self, video_path: Path, work_directory: Path):
+    def __init__(
+            self,
+            work_directory: Path,
+            video_path: Path,
+            audio_path: Path = None
+    ):
+        """
+
+        :param work_directory: directory to store the files for the video
+        :param video_path:
+        :param audio_path:
+        """
         self.work_directory = work_directory
         self.video_path = video_path
+        self.audio_path = audio_path
 
         self.work_directory.mkdir(exist_ok=True)
 
@@ -27,7 +39,7 @@ class StoryCraft:
             extract_subtitles(
                 self.video_path,
                 subtitles_path,
-                language=language
+                audio_path=self.audio_path
             )
 
         agent_dir = self.work_directory / 'agent'
@@ -39,7 +51,7 @@ class StoryCraft:
             agent_dir=agent_dir,
             overwrite=overwrite
         )
-        AgentCRUD().create(
+        agent_db = AgentCRUD().create(
             name=agent.name,
             description=agent.description,
             agent_dir=str(agent_dir)
@@ -60,7 +72,10 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--overwrite', type=bool, required=False,
                         help='Override folder if exists')
     args = parser.parse_args()
-    StoryCraft(Path(args.video_path), Path(args.work_directory)).evaluate(
+    StoryCraft(
+        video_path=Path(args.video_path),
+        work_directory=Path(args.work_directory)
+    ).evaluate(
         assistant_name=args.assistant_name,
         language=args.language,
         overwrite=args.overwrite

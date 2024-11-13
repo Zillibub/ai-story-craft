@@ -1,28 +1,39 @@
 import ffmpeg
 import tempfile
-import whisper
 import json
+from openai import OpenAI
 from typing import Iterator, TextIO
 from pathlib import Path
 from core.settings import settings
 
 
-def extract_subtitles(video_path: Path, output_path: Path, language: str = "english"):
+def extract_subtitles(
+        video_path: Path,
+        output_path: Path,
+        audio_path: Path = None
+):
     if not video_path.exists():
         raise FileNotFoundError(f"Video file not found: {video_path}")
-    model = whisper.load_model(settings.whisper_model)
+
+    client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        audio_path = str(Path(temp_dir, video_path.stem + '.wav'))
-        ffmpeg.input(str(video_path)).output(
-            audio_path,
-            acodec="pcm_s16le", ac=1, ar="16k"
-        ).run(quiet=True, overwrite_output=True)
-
-        result = model.transcribe(audio_path, language=language)
+        if not audio_path:
+            audio_path = Path(temp_dir, video_path.stem + '.mp3')
+            ffmpeg.input(str(video_path)).output(
+                str(audio_path),
+                acodec="libmp3lame", ab="32k", ac=1, ar="8k"
+            ).run(quiet=True, overwrite_output=True)
+        with open(audio_path, "rb") as audio_file:
+            transcription = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="verbose_json",
+                timestamp_granularities=["segment"]
+            )
 
         with open(output_path, "w", encoding="utf-8") as srt:
-            json.dump(result, srt)
+            json.dump(dict(transcription), srt)
 
 
 def write_srt(transcript: Iterator[dict], file: TextIO):

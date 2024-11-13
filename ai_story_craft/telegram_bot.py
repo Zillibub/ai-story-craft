@@ -14,8 +14,10 @@ import openai
 # from langfuse.decorators import observe
 from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
-from rag.agent_manager import AgentManager
+from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
+from celery_app import process_youtube_video
+from integrations.telegram import MessageSender
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -26,7 +28,8 @@ conversation_history = defaultdict(lambda: deque(maxlen=10))
 
 openai.api_key = settings.OPENAI_API_KEY
 
-async def retrieve_active_agent(update: Update) ->Union[None, LangChanAgent]:
+
+async def retrieve_active_agent(update: Update) -> Union[None, LangChanAgent]:
     chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
@@ -118,6 +121,7 @@ async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(f"Error activating video {agent_name}.")
 
+
 async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agent = await retrieve_active_agent(update)
     if agent is None:
@@ -128,6 +132,14 @@ async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(story_map, parse_mode="HTML")
 
 
+async def add_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    video_url = context.args[0]
+    message = await update.message.reply_text(f"Starting video processing")
+    process_youtube_video.delay(
+        youtube_url=video_url,
+        update_sender=MessageSender(update.message.chat_id, message.message_id).to_dict()
+    )
+
 
 async def post_init(application: Application):
     await application.bot.set_my_commands([
@@ -135,16 +147,17 @@ async def post_init(application: Application):
         BotCommand("/select", "Select a video for analysis"),
         BotCommand("/selected", "Get selected for analysis video"),
         BotCommand("/screenshot", "Get screenshot of the video"),
-        BotCommand("/story_map", "Create a user story map for selected video")
+        BotCommand("/story_map", "Create a user story map for selected video"),
+        BotCommand("/add_video", "Adds a video")
 
     ])
     load_agents()
+
 
 def load_agents():
     agents = AgentCRUD().get_list()
     for agent in agents:
         AgentManager().add(agent.id, LangChanAgent.load(Path(agent.agent_dir)))
-
 
 
 def main():
@@ -155,6 +168,7 @@ def main():
     application.add_handler(CommandHandler("selected", get_active_agent, has_args=False))
     application.add_handler(CommandHandler("screenshot", get_screenshot, has_args=True))
     application.add_handler(CommandHandler("story_map", create_story_map, has_args=False))
+    application.add_handler(CommandHandler("add_video", add_video, has_args=True))
     application.run_polling()
 
 
