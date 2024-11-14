@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
 
     telegram_bot_token: str
+    discord_bot_token: str
     new_session_timeout: int = 3600
 
     working_directory: str

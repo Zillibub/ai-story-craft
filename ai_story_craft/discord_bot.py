@@ -3,7 +3,6 @@ from core.settings import settings
 import discord
 from discord import Message
 from typing import Union
-from pathlib import Path
 import openai
 from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
@@ -22,37 +21,35 @@ bot = commands.Bot(command_prefix='$', intents=intents)
 conversation_history = defaultdict(lambda: deque(maxlen=10))
 openai.api_key = settings.OPENAI_API_KEY
 
-client = discord.Client()
+@bot.event
+async def on_ready():
+    print(f'We have logged in as {bot.user}')
 
-class Client(discord.Client):
-    async def on_ready(self):
-        pass
+@bot.event
+async def on_message(message: Message):
+    if message.author == bot.user:
+        return
 
+    agent = await retrieve_active_agent(message)
 
+    if agent is None:
+        return
 
-    async def on_message(self, message: Message):
-        if message.author == self.user:
-            return
+    question = message.content
 
-        agent = await retrieve_active_agent(message)
+    reply = agent.answer(question, conversation_history[message.channel.id])
 
-        if agent is None:
-            return
+    conversation_history[message.channel.id].append({'question': question, 'answer': reply})
 
-        question = message.content
-
-        reply = agent.answer(question, conversation_history[message.channel.id])
-
-        conversation_history[message.channel.id].append({'question': question, 'answer': reply})
-
-        await message.channel.send(reply)
-
-
-client = discord.Client()
+    await message.channel.send(reply)
 
 
 async def retrieve_active_agent(message: Message) -> Union[None, LangChanAgent]:
     chat = ChatCRUD().get_by_external_id(str(message.channel.id))
+    if chat is None:
+        await message.channel.send("No video is currently selected. Please select a video first.")
+        return
+
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
     if active_agent is None:
@@ -143,35 +140,8 @@ async def add_video(message: Message, video_url: str):
     )
 
 
-async def post_init(application: Application):
-    await application.bot.set_my_commands([
-        BotCommand("/videos", "Get list of available Videos"),
-        BotCommand("/select", "Select a video for analysis"),
-        BotCommand("/selected", "Get selected for analysis video"),
-        BotCommand("/screenshot", "Get screenshot of the video"),
-        BotCommand("/story_map", "Create a user story map for selected video"),
-        BotCommand("/add_video", "Adds a video")
-
-    ])
-    load_agents()
-
-
-def load_agents():
-    agents = AgentCRUD().get_list()
-    for agent in agents:
-        AgentManager().add(agent.id, LangChanAgent.load(Path(agent.agent_dir)))
-
-
 def main():
-    application = Application.builder().token(settings.telegram_bot_token).post_init(post_init).build()
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, answer))
-    application.add_handler(CommandHandler("videos", get_agents, has_args=False))
-    application.add_handler(CommandHandler("select", activate_agent, has_args=True))
-    application.add_handler(CommandHandler("selected", get_active_agent, has_args=False))
-    application.add_handler(CommandHandler("screenshot", get_screenshot, has_args=True))
-    application.add_handler(CommandHandler("story_map", create_story_map, has_args=False))
-    application.add_handler(CommandHandler("add_video", add_video, has_args=True))
-    application.run_polling()
+    bot.run(settings.discord_bot_token)
 
 
 if __name__ == "__main__":
