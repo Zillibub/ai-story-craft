@@ -1,4 +1,3 @@
-from torchgen.gen import static_dispatch_extra_headers
 
 from core.settings import settings
 import discord
@@ -6,14 +5,18 @@ from discord import Message
 from typing import Union
 from pathlib import Path
 import openai
-# from langfuse.openai import openai
-# from langfuse.decorators import observe
 from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video
 from integrations.telegram import MessageSender
+from discord.ext import commands
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix='$', intents=intents)
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -59,88 +62,84 @@ async def retrieve_active_agent(message: Message) -> Union[None, LangChanAgent]:
     agent = AgentManager().get(active_agent.agent_id)
     return agent
 
-
-async def get_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    agent = await retrieve_active_agent(update)
+@bot.command(name='screenshot')
+async def get_screenshot(message: Message, description: str):
+    agent = await retrieve_active_agent(message)
     if agent is None:
         return
-
-    description = context.args[0]
     if not description:
-        await update.message.reply_text("Please provide Screenshot description")
+        await message.channel.send("Please provide Screenshot description")
         return
 
-    image_bytes, image_name = agent.get_image(update.message.text)
-    await update.message.reply_document(
-        document=image_bytes,
-        write_timeout=500,
-        filename=image_name,
-        reply_to_message_id=update.message.id
-    )
+    image_bytes, image_name = agent.get_image(description)
+    await message.channel.send(file=discord.File(image_bytes, filename=image_name))
 
 
-async def get_agents(update: Update, context: ContextTypes.DEFAULT_TYPE):
+@bot.command(name='videos')
+async def get_agents(message: Message):
     agents = AgentCRUD().get_list()
     if len(agents) == 0:
         reply = "No videos available."
     else:
         reply = "Available videos:\n" + "\t\n".join([agent.name for agent in agents])
-    await update.message.reply_text(reply)
+    await message.channel.send(reply)
 
 
-async def get_active_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
+@bot.command(name='selected')
+async def get_active_agent(message: Message):
+    chat = ChatCRUD().get_by_external_id(str(message.channel.id))
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
     if active_agent:
-        await update.message.reply_text(
+        await message.channel.send(
             f"Active video: {active_agent.agent.name} \n\n "
             f"Description: {active_agent.agent.description} \n"
             f"Id: {active_agent.agent.id}"
         )
     else:
-        await update.message.reply_text("No active video.")
+        await message.channel.send("No active video.")
 
 
-async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    agent_name = context.args[0]
+@bot.command(name='select')
+async def activate_agent(message: Message, agent_name: str):
     if not agent_name:
-        await update.message.reply_text("Please provide an video name.")
+        await message.channel.send("Please provide an video name.")
         return
 
     agent = AgentCRUD().get_by_name(agent_name)
     if agent is None:
-        await update.message.reply_text(f"Video {agent_name} not found.")
+        await message.channel.send(f"Video {agent_name} not found.")
         return
 
-    chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
+    chat = ChatCRUD().get_by_external_id(str(message.channel.id))
     if chat is None:
-        chat = ChatCRUD().create(chat_id=update.message.chat_id)
+        chat = ChatCRUD().create(chat_id=message.channel.id)
 
     active_agent = ActiveAgentCRUD().activate_agent(chat.id, agent.id)
 
     if active_agent:
-        await update.message.reply_text(f"Video {agent_name} Selected.")
+        await message.channel.send(f"Video {agent_name} Selected.")
     else:
-        await update.message.reply_text(f"Error activating video {agent_name}.")
+        await message.channel.send(f"Error activating video {agent_name}.")
 
 
-async def create_story_map(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    agent = await retrieve_active_agent(update)
+@bot.command(name='story_map')
+async def create_story_map(message: Message):
+    agent = await retrieve_active_agent(message)
     if agent is None:
         return
 
     story_map = agent.create_user_story_map()
     story_map = agent.apply_telegram_formating(story_map)[:4096]
-    await update.message.reply_text(story_map, parse_mode="HTML")
+    await message.channel.send(story_map)
 
 
-async def add_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    video_url = context.args[0]
-    message = await update.message.reply_text(f"Starting video processing")
+@bot.command(name='add_video')
+async def add_video(message: Message, video_url: str):
+    message = await message.channel.send(f"Starting video processing")
     process_youtube_video.delay(
         youtube_url=video_url,
-        update_sender=MessageSender(update.message.chat_id, message.message_id).to_dict()
+        update_sender=MessageSender(message.channel.id, message.id).to_dict()
     )
 
 
