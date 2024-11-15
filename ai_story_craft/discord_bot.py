@@ -1,7 +1,7 @@
 
 from core.settings import settings
 import discord
-from discord import Message
+from discord import Message, Client, app_commands
 from typing import Union
 import openai
 from collections import deque, defaultdict
@@ -10,24 +10,27 @@ from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video
 from integrations.telegram import MessageSender
-from discord.ext import commands
 
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix='$', intents=intents)
+# bot = commands.Bot(command_prefix='$', intents=intents)
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
 openai.api_key = settings.OPENAI_API_KEY
 
-@bot.event
-async def on_ready():
-    print(f'We have logged in as {bot.user}')
+client = Client(intents=intents)
+tree = app_commands.CommandTree(client)
 
-@bot.event
+@client.event
+async def on_ready():
+    await tree.sync()
+    print(f'We have logged in as {client.user}')
+
+@client.event
 async def on_message(message: Message):
-    if message.author == bot.user:
+    if message.author == client.user:
         return
 
     agent = await retrieve_active_agent(message)
@@ -59,7 +62,7 @@ async def retrieve_active_agent(message: Message) -> Union[None, LangChanAgent]:
     agent = AgentManager().get(active_agent.agent_id)
     return agent
 
-@bot.command(name='screenshot')
+@tree.command(name='screenshot')
 async def get_screenshot(message: Message, description: str):
     agent = await retrieve_active_agent(message)
     if agent is None:
@@ -72,7 +75,7 @@ async def get_screenshot(message: Message, description: str):
     await message.channel.send(file=discord.File(image_bytes, filename=image_name))
 
 
-@bot.command(name='videos')
+@tree.command(name='videos')
 async def get_agents(message: Message):
     agents = AgentCRUD().get_list()
     if len(agents) == 0:
@@ -82,7 +85,7 @@ async def get_agents(message: Message):
     await message.channel.send(reply)
 
 
-@bot.command(name='selected')
+@tree.command(name='selected')
 async def get_active_agent(message: Message):
     chat = ChatCRUD().get_by_external_id(str(message.channel.id))
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
@@ -97,7 +100,7 @@ async def get_active_agent(message: Message):
         await message.channel.send("No active video.")
 
 
-@bot.command(name='select')
+@tree.command(name='select')
 async def activate_agent(message: Message, agent_name: str):
     if not agent_name:
         await message.channel.send("Please provide an video name.")
@@ -120,7 +123,7 @@ async def activate_agent(message: Message, agent_name: str):
         await message.channel.send(f"Error activating video {agent_name}.")
 
 
-@bot.command(name='story_map')
+@tree.command(name='story_map')
 async def create_story_map(message: Message):
     agent = await retrieve_active_agent(message)
     if agent is None:
@@ -131,7 +134,7 @@ async def create_story_map(message: Message):
     await message.channel.send(story_map)
 
 
-@bot.command(name='add_video')
+@tree.command(name='add_video')
 async def add_video(message: Message, video_url: str):
     message = await message.channel.send(f"Starting video processing")
     process_youtube_video.delay(
@@ -141,7 +144,7 @@ async def add_video(message: Message, video_url: str):
 
 
 def main():
-    bot.run(settings.discord_bot_token)
+    client.run(settings.discord_bot_token)
 
 
 if __name__ == "__main__":
