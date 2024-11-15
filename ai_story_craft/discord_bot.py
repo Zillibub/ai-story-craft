@@ -49,7 +49,6 @@ async def on_message(message: Message):
 
 
 async def retrieve_active_agent(interaction: discord.Interaction) -> Union[None, LangChanAgent]:
-    await interaction.response.defer()
 
     chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
     if chat is None:
@@ -66,7 +65,7 @@ async def retrieve_active_agent(interaction: discord.Interaction) -> Union[None,
     return agent
 
 
-@tree.command(name='screenshot')
+@tree.command(name='screenshot', description='Get screenshot')
 async def get_screenshot(interaction: discord.Interaction, description: str):
     await interaction.response.defer()
     agent = await retrieve_active_agent(interaction.message)
@@ -80,7 +79,7 @@ async def get_screenshot(interaction: discord.Interaction, description: str):
     await interaction.followup.send(file=discord.File(image_bytes, filename=image_name))
 
 
-@tree.command(name='videos')
+@tree.command(name='videos', description='List available videos')
 async def get_agents(interaction: discord.Interaction):
     await interaction.response.defer()
     agents = AgentCRUD().get_list()
@@ -91,7 +90,7 @@ async def get_agents(interaction: discord.Interaction):
     await interaction.followup.send(reply)
 
 
-@tree.command(name='selected')
+@tree.command(name='selected', description='Get selected video')
 async def get_active_agent(interaction: discord.Interaction):
     await interaction.response.defer()
     chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
@@ -107,7 +106,7 @@ async def get_active_agent(interaction: discord.Interaction):
         await interaction.followup.send("No active video.")
 
 
-@tree.command(name='select')
+@tree.command(name='select', description='Select video for analysis')
 async def activate_agent(interaction: discord.Interaction, agent_name: str):
     await interaction.response.defer()
     if not agent_name:
@@ -131,7 +130,7 @@ async def activate_agent(interaction: discord.Interaction, agent_name: str):
         await interaction.followup.send(f"Error activating video {agent_name}.")
 
 
-@tree.command(name='story_map')
+@tree.command(name='story_map', description='Generate story map for selected video')
 async def create_story_map(interaction: discord.Interaction):
     await interaction.response.defer()
 
@@ -144,7 +143,7 @@ async def create_story_map(interaction: discord.Interaction):
     await interaction.followup.send(story_map)
 
 
-@tree.command(name='add_video')
+@tree.command(name='add_video', description='Add video for analysis')
 async def add_video(interaction: discord.Interaction, video_url: str):
     await interaction.response.defer()
     message = await interaction.followup.send(f"Starting video processing")
