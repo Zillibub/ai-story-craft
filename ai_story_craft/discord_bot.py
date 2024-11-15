@@ -1,4 +1,3 @@
-
 from core.settings import settings
 import discord
 from discord import Message, Client, app_commands
@@ -23,10 +22,12 @@ openai.api_key = settings.OPENAI_API_KEY
 client = Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
+
 @client.event
 async def on_ready():
     await tree.sync()
     print(f'We have logged in as {client.user}')
+
 
 @client.event
 async def on_message(message: Message):
@@ -61,6 +62,7 @@ async def retrieve_active_agent(message: Message) -> Union[None, LangChanAgent]:
 
     agent = AgentManager().get(active_agent.agent_id)
     return agent
+
 
 @tree.command(name='screenshot')
 async def get_screenshot(message: Message, description: str):
@@ -140,6 +142,21 @@ async def add_video(message: Message, video_url: str):
     process_youtube_video.delay(
         youtube_url=video_url,
         update_sender=MessageSender(message.channel.id, message.id).to_dict()
+    )
+
+
+@tree.command(name='help', description='Get help')
+async def help_command(interaction: discord.Interaction):
+    await interaction.response.defer()
+    await interaction.followup.send(
+        "Available commands:\n"
+        "/videos - List available videos\n"
+        "/selected - Get selected video\n"
+        "/select <video_name> - Select video\n"
+        "/story_map - Generate story map\n"
+        "/add_video <youtube_url> - Add video\n"
+        "/screenshot <description> - Get screenshot\n"
+        "/help - Get help"
     )
 
 
