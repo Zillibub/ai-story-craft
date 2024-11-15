@@ -48,16 +48,18 @@ async def on_message(message: Message):
     await message.channel.send(reply)
 
 
-async def retrieve_active_agent(message: Message) -> Union[None, LangChanAgent]:
-    chat = ChatCRUD().get_by_external_id(str(message.channel.id))
+async def retrieve_active_agent(interaction: discord.Interaction) -> Union[None, LangChanAgent]:
+    await interaction.response.defer()
+
+    chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
     if chat is None:
-        await message.channel.send("No video is currently selected. Please select a video first.")
+        await interaction.followup.send("No video is currently selected. Please select a video first.")
         return
 
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
     if active_agent is None:
-        await message.channel.send("No video is currently selected. Please select a video first.")
+        await interaction.followup.send("No video is currently selected. Please select a video first.")
         return
 
     agent = AgentManager().get(active_agent.agent_id)
@@ -65,80 +67,87 @@ async def retrieve_active_agent(message: Message) -> Union[None, LangChanAgent]:
 
 
 @tree.command(name='screenshot')
-async def get_screenshot(message: Message, description: str):
-    agent = await retrieve_active_agent(message)
+async def get_screenshot(interaction: discord.Interaction, description: str):
+    await interaction.response.defer()
+    agent = await retrieve_active_agent(interaction.message)
     if agent is None:
         return
     if not description:
-        await message.channel.send("Please provide Screenshot description")
+        await interaction.followup.send("Please provide Screenshot description")
         return
 
     image_bytes, image_name = agent.get_image(description)
-    await message.channel.send(file=discord.File(image_bytes, filename=image_name))
+    await interaction.followup.send(file=discord.File(image_bytes, filename=image_name))
 
 
 @tree.command(name='videos')
-async def get_agents(message: Message):
+async def get_agents(interaction: discord.Interaction):
+    await interaction.response.defer()
     agents = AgentCRUD().get_list()
     if len(agents) == 0:
         reply = "No videos available."
     else:
         reply = "Available videos:\n" + "\t\n".join([agent.name for agent in agents])
-    await message.channel.send(reply)
+    await interaction.followup.send(reply)
 
 
 @tree.command(name='selected')
-async def get_active_agent(message: Message):
-    chat = ChatCRUD().get_by_external_id(str(message.channel.id))
+async def get_active_agent(interaction: discord.Interaction):
+    await interaction.response.defer()
+    chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
     if active_agent:
-        await message.channel.send(
+        await interaction.followup.send(
             f"Active video: {active_agent.agent.name} \n\n "
             f"Description: {active_agent.agent.description} \n"
             f"Id: {active_agent.agent.id}"
         )
     else:
-        await message.channel.send("No active video.")
+        await interaction.followup.send("No active video.")
 
 
 @tree.command(name='select')
-async def activate_agent(message: Message, agent_name: str):
+async def activate_agent(interaction: discord.Interaction, agent_name: str):
+    await interaction.response.defer()
     if not agent_name:
-        await message.channel.send("Please provide an video name.")
+        await interaction.followup.send("Please provide an video name.")
         return
 
     agent = AgentCRUD().get_by_name(agent_name)
     if agent is None:
-        await message.channel.send(f"Video {agent_name} not found.")
+        await interaction.followup.send(f"Video {agent_name} not found.")
         return
 
-    chat = ChatCRUD().get_by_external_id(str(message.channel.id))
+    chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
     if chat is None:
-        chat = ChatCRUD().create(chat_id=message.channel.id)
+        chat = ChatCRUD().create(chat_id=interaction.channel.id)
 
     active_agent = ActiveAgentCRUD().activate_agent(chat.id, agent.id)
 
     if active_agent:
-        await message.channel.send(f"Video {agent_name} Selected.")
+        await interaction.followup.send(f"Video {agent_name} Selected.")
     else:
-        await message.channel.send(f"Error activating video {agent_name}.")
+        await interaction.followup.send(f"Error activating video {agent_name}.")
 
 
 @tree.command(name='story_map')
-async def create_story_map(message: Message):
-    agent = await retrieve_active_agent(message)
+async def create_story_map(interaction: discord.Interaction):
+    await interaction.response.defer()
+
+    agent = await retrieve_active_agent(interaction.message)
     if agent is None:
         return
 
     story_map = agent.create_user_story_map()
     story_map = agent.apply_telegram_formating(story_map)[:4096]
-    await message.channel.send(story_map)
+    await interaction.followup.send(story_map)
 
 
 @tree.command(name='add_video')
-async def add_video(message: Message, video_url: str):
-    message = await message.channel.send(f"Starting video processing")
+async def add_video(interaction: discord.Interaction, video_url: str):
+    await interaction.response.defer()
+    message = await interaction.followup.send(f"Starting video processing")
     process_youtube_video.delay(
         youtube_url=video_url,
         update_sender=MessageSender(message.channel.id, message.id).to_dict()
