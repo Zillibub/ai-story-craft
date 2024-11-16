@@ -52,7 +52,7 @@ async def on_message(message: Message):
     await message.channel.send(reply)
 
 
-async def retrieve_active_agent(interaction: discord.Interaction) -> Union[None, LangChanAgent]:
+async def retrieve_active_agent(interaction: Union[discord.Interaction, discord.Message]) -> Union[None, LangChanAgent]:
 
     chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
     if chat is None:
@@ -71,7 +71,7 @@ async def retrieve_active_agent(interaction: discord.Interaction) -> Union[None,
 
 @tree.command(name='screenshot', description='Get screenshot')
 async def get_screenshot(interaction: discord.Interaction, description: str):
-    await interaction.response.defer()
+    await interaction.response.defer()  # noqa no idea why pycharm complains about this, it works
 
     agent = await retrieve_active_agent(interaction)
     if agent is None:
@@ -86,7 +86,7 @@ async def get_screenshot(interaction: discord.Interaction, description: str):
 
 @tree.command(name='videos', description='List available videos')
 async def get_agents(interaction: discord.Interaction):
-    await interaction.response.defer()
+    await interaction.response.defer()  # noqa
     agents = AgentCRUD().get_list()
     if len(agents) == 0:
         reply = "No videos available."
@@ -97,7 +97,7 @@ async def get_agents(interaction: discord.Interaction):
 
 @tree.command(name='selected', description='Get selected video')
 async def get_active_agent(interaction: discord.Interaction):
-    await interaction.response.defer()
+    await interaction.response.defer()  # noqa
     chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
     active_agent = ActiveAgentCRUD().get_active_agent(chat.id)
 
@@ -113,7 +113,7 @@ async def get_active_agent(interaction: discord.Interaction):
 
 @tree.command(name='select', description='Select video for analysis')
 async def activate_agent(interaction: discord.Interaction, agent_name: str):
-    await interaction.response.defer()
+    await interaction.response.defer()  # noqa
     if not agent_name:
         await interaction.followup.send("Please provide an video name.")
         return
@@ -137,7 +137,7 @@ async def activate_agent(interaction: discord.Interaction, agent_name: str):
 
 @tree.command(name='story_map', description='Generate story map for selected video')
 async def create_story_map(interaction: discord.Interaction):
-    await interaction.response.defer()
+    await interaction.response.defer()  # noqa
 
     agent = await retrieve_active_agent(interaction)
     if agent is None:
@@ -152,7 +152,7 @@ async def create_story_map(interaction: discord.Interaction):
 
 @tree.command(name='add_video', description='Add video for analysis')
 async def add_video(interaction: discord.Interaction, video_url: str):
-    await interaction.response.defer()
+    await interaction.response.defer()  # noqa
 
     is_worker_running = check_celery_worker()
     if not is_worker_running:
@@ -168,7 +168,7 @@ async def add_video(interaction: discord.Interaction, video_url: str):
 
 @tree.command(name='help', description='Get help')
 async def help_command(interaction: discord.Interaction):
-    await interaction.response.defer()
+    await interaction.response.defer()  # noqa
     await interaction.followup.send(
         "Available commands:\n"
         "/videos - List available videos\n"
