@@ -1,7 +1,7 @@
 import json
 import ffmpeg
 import shutil
-from typing import Tuple
+from typing import Tuple, List
 from pathlib import Path
 from langchain_chroma import Chroma
 from langchain.vectorstores import VectorStore
@@ -11,7 +11,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts.chat import ChatPromptTemplate, HumanMessagePromptTemplate, PromptTemplate
 from langchain_core.documents.base import Document
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from core.settings import settings
 from rag.agents import ProductManager, Formatter
 from langfuse.openai import openai
@@ -93,6 +93,17 @@ class LangChanAgent:
     def apply_telegram_formating(self, text: str):
         rag_chain = (
                 ChatPromptTemplate.from_template(Formatter.telegram_formatting) | self.llm | StrOutputParser()
+        )
+        return rag_chain.invoke({"text": text})
+
+    def apply_discord_formating(self, text: str) -> List[str]:
+
+        parser = JsonOutputParser()
+        rag_chain = (
+                ChatPromptTemplate.from_template(
+                    Formatter.discord_formatting,
+                    partial_variables={"format_instructions": parser.get_format_instructions()}
+                ) | self.llm | parser
         )
         return rag_chain.invoke({"text": text})
 

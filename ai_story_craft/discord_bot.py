@@ -3,6 +3,7 @@ import discord
 from discord import Message, Client, app_commands
 from typing import Union
 import openai
+import io
 from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from agent_manager import AgentManager
@@ -68,7 +69,7 @@ async def retrieve_active_agent(interaction: discord.Interaction) -> Union[None,
 @tree.command(name='screenshot', description='Get screenshot')
 async def get_screenshot(interaction: discord.Interaction, description: str):
     await interaction.response.defer()
-    agent = await retrieve_active_agent(interaction.message)
+    agent = await retrieve_active_agent(interaction)
     if agent is None:
         return
     if not description:
@@ -76,7 +77,7 @@ async def get_screenshot(interaction: discord.Interaction, description: str):
         return
 
     image_bytes, image_name = agent.get_image(description)
-    await interaction.followup.send(file=discord.File(image_bytes, filename=image_name))
+    await interaction.followup.send(file=discord.File(io.BytesIO(image_bytes), filename=image_name))
 
 
 @tree.command(name='videos', description='List available videos')
@@ -134,13 +135,14 @@ async def activate_agent(interaction: discord.Interaction, agent_name: str):
 async def create_story_map(interaction: discord.Interaction):
     await interaction.response.defer()
 
-    agent = await retrieve_active_agent(interaction.message)
+    agent = await retrieve_active_agent(interaction)
     if agent is None:
         return
 
     story_map = agent.create_user_story_map()
-    story_map = agent.apply_telegram_formating(story_map)[:4096]
-    await interaction.followup.send(story_map)
+    story_map_chunks = agent.apply_discord_formating(story_map)
+    for chunk in story_map_chunks:
+        await interaction.followup.send(chunk)
 
 
 @tree.command(name='add_video', description='Add video for analysis')

@@ -19,6 +19,17 @@ class Formatter:
         Text: {text} \nAnswer:
     """
 
+    discord_formatting: str = """
+        You are given a text. Format it based on these rules:
+        **text** - Bold text, *text* - Italicize text, __text__ - Underline text,
+        ~~text~~ - Strikethrough text, `text` - highlight part of a piece of code
+        
+        Split the reply in chunks of 2000 symbols.
+        Return them as in json format as a list of strings.
+        
+        Text: {text} \nAnswer:
+        """
+
 
 @dataclass
 class ProductManager:
