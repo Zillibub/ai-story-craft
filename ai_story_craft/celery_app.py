@@ -10,6 +10,15 @@ from integrations.youtube import download_video, download_audio
 
 celery_app = Celery("worker", broker=settings.CELERY_BACKEND_URL,  backend=settings.CELERY_BACKEND_URL)
 
+def check_celery_worker() -> bool:
+    try:
+        response = celery_app.control.ping(timeout=1.0)
+        if response:
+            return True
+        else:
+            return False
+    except Exception as e:
+        return False
 
 @celery_app.task
 def process_youtube_video(youtube_url: str, update_sender: dict = None):

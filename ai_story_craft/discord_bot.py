@@ -8,8 +8,9 @@ from collections import deque, defaultdict
 from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
-from celery_app import process_youtube_video
+from celery_app import process_youtube_video, check_celery_worker
 from integrations.telegram import MessageSender
+
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -22,6 +23,9 @@ openai.api_key = settings.OPENAI_API_KEY
 
 client = Client(intents=intents)
 tree = app_commands.CommandTree(client)
+
+def update_conversation_history(channel_id, question, answer):
+    conversation_history[channel_id].append({'question': question, 'answer': answer})
 
 
 @client.event
@@ -43,8 +47,7 @@ async def on_message(message: Message):
     question = message.content
 
     reply = agent.answer(question, conversation_history[message.channel.id])
-
-    conversation_history[message.channel.id].append({'question': question, 'answer': reply})
+    update_conversation_history(message.channel.id, question, reply)
 
     await message.channel.send(reply)
 
@@ -69,6 +72,7 @@ async def retrieve_active_agent(interaction: discord.Interaction) -> Union[None,
 @tree.command(name='screenshot', description='Get screenshot')
 async def get_screenshot(interaction: discord.Interaction, description: str):
     await interaction.response.defer()
+
     agent = await retrieve_active_agent(interaction)
     if agent is None:
         return
@@ -140,6 +144,7 @@ async def create_story_map(interaction: discord.Interaction):
         return
 
     story_map = agent.create_user_story_map()
+    update_conversation_history(interaction.channel_id, "User story map", story_map)
     story_map_chunks = agent.apply_discord_formating(story_map)
     for chunk in story_map_chunks:
         await interaction.followup.send(chunk)
@@ -148,6 +153,12 @@ async def create_story_map(interaction: discord.Interaction):
 @tree.command(name='add_video', description='Add video for analysis')
 async def add_video(interaction: discord.Interaction, video_url: str):
     await interaction.response.defer()
+
+    is_worker_running = check_celery_worker()
+    if not is_worker_running:
+        await interaction.followup.send("Video import is not available. Please try again later.")
+        return
+
     message = await interaction.followup.send(f"Starting video processing")
     process_youtube_video.delay(
         youtube_url=video_url,
