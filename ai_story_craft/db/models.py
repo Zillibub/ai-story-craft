@@ -33,6 +33,7 @@ class Video(Base):
     has_audio = Column(Boolean, nullable=False)
     audio_path = Column(String, nullable=True)
     url = Column(String, nullable=True)
+    is_downloaded = Column(Boolean, default=False)
 
 
 class Agent(Base):

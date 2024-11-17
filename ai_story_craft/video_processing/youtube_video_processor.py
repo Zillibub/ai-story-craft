@@ -9,11 +9,21 @@ from db.models import Video
 
 
 class YoutubeVideoProcessor:
+    """
+    Processes a YouTube video:
+    - Downloads the video stream with the highest resolution
+    - Downloads the audio stream if it is not included in the video stream
+    - If the video was already downloaded, it skips the download process
+    """
 
     def __init__(self, video_record: Video):
         self.video_record = video_record
 
     def process(self):
+
+        if self.video_record.is_downloaded:
+            return
+
         parsed_url = urlparse(self.video_record.url)
         query_params = parse_qs(parsed_url.query)
 
