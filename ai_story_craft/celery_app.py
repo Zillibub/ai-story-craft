@@ -4,10 +4,7 @@ from pathlib import Path
 from celery import Celery
 from story_craft import StoryCraft
 from core.settings import settings
-from urllib.parse import parse_qs, urlparse
 from video_processing.youtube_video_processor import YoutubeVideoProcessor
-
-from integrations.youtube import download_video, download_audio
 
 celery_app = Celery("worker", broker=settings.CELERY_BACKEND_URL,  backend=settings.CELERY_BACKEND_URL)
 
@@ -18,7 +15,7 @@ def check_celery_worker() -> bool:
             return True
         else:
             return False
-    except Exception as e:
+    except Exception:
         return False
 
 @celery_app.task
@@ -41,7 +38,7 @@ def process_youtube_video(youtube_url: str, update_sender: dict = None):
         work_directory=Path(settings.working_directory) / video_processor.video_record.hash_sum,
         video_path=video_processor.video_record.video_path,
         audio_path=video_processor.video_record.audio_path
-    ).evaluate(assistant_name=v_param[0])
+    ).evaluate(assistant_name=video_processor.video_record.title)
 
     if update_sender:
         update_sender.update_message("Video processed.")
