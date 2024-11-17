@@ -19,6 +19,17 @@ class Formatter:
         Text: {text} \nAnswer:
     """
 
+    discord_formatting: str = """
+        You are given a text. Format it based on these rules:
+        **text** - Bold text, *text* - Italicize text, __text__ - Underline text,
+        ~~text~~ - Strikethrough text, `text` - highlight part of a piece of code
+        
+        Split the reply in chunks of 2000 symbols.
+        Return them as in json format as a list of strings.
+        
+        Text: {text} \nAnswer:
+        """
+
 
 @dataclass
 class ProductManager:
@@ -60,6 +71,10 @@ class ProductManager:
         Create a user story map for the presented product. 
         Each task should have the following information: 
         1. Description 2. Goal 3. Reason 
+        
+        In description provide actions, performed by the user, 2-3 sentences. 
+        In goal provide the reason for the action, 1-2 sentences.
+        In reason provide the benefit of the action, 1-2 sentences.
         
         Return only user story map. Use only provided information.  
         
