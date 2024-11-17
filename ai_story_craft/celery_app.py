@@ -1,5 +1,5 @@
 import time
-from integrations.telegram import MessageSender
+from integrations.messenger import MessageSender
 from pathlib import Path
 from celery import Celery
 from story_craft import StoryCraft

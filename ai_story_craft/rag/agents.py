@@ -72,6 +72,10 @@ class ProductManager:
         Each task should have the following information: 
         1. Description 2. Goal 3. Reason 
         
+        In description provide actions, performed by the user, 2-3 sentences. 
+        In goal provide the reason for the action, 1-2 sentences.
+        In reason provide the benefit of the action, 1-2 sentences.
+        
         Return only user story map. Use only provided information.  
         
         Your reply should be no more than 4096 characters.

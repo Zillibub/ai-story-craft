@@ -17,7 +17,7 @@ from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video
-from integrations.telegram import MessageSender
+from integrations.messenger import MessageSender
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))

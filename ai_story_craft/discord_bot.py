@@ -9,7 +9,7 @@ from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video, check_celery_worker
-from integrations.telegram import MessageSender
+from integrations.messenger import MessageSender
 
 
 intents = discord.Intents.default()
@@ -162,7 +162,6 @@ async def add_video(interaction: discord.Interaction, video_url: str):
     message = await interaction.followup.send(f"Starting video processing")
     process_youtube_video.delay(
         youtube_url=video_url,
-        update_sender=MessageSender(message.channel.id, message.id).to_dict()
     )
 
 
