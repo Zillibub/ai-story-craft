@@ -1,7 +1,7 @@
 from db.base_crud import CRUD, engine
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
-from db.models import Chat, Agent, ActiveAgent, Message
+from db.models import Chat, Agent, ActiveAgent, Message, Video
 
 
 def now():
@@ -16,6 +16,10 @@ class ChatCRUD(CRUD):
         with self.scoped_session() as session:
             instance = session.query(self.model).filter_by(chat_id=chat_id).first()
         return instance
+
+class VideoCRUD(CRUD):
+    def __init__(self):
+        super().__init__(Video)
 
 
 class AgentCRUD(CRUD):
