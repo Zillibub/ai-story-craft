@@ -32,7 +32,6 @@ class YoutubeVideoProcessor:
             raise ValueError("Invalid YouTube URL: missing video ID")
 
         video_path = Path(self.video_record.video_path)
-        audio_path = None
 
         # Edge case not covered:
         # if the video without audio was downloaded and the process was interrupted
@@ -40,11 +39,19 @@ class YoutubeVideoProcessor:
         if not video_path.exists():
             has_audio = download_video(Path(self.video_record.url), video_path)
             if not has_audio:
-                audio_path = Path(settings.videos_directory, f"{v_param[0]}.wav")
+                audio_path = Path(settings.videos_directory, f"{self.video_record.hash_sum}.wav")
                 download_audio(Path(self.video_record.url), audio_path)
                 self.video_record = VideoCRUD().update(self.video_record, audio_path=audio_path)
 
         self.video_record = VideoCRUD().update(self.video_record, is_downloaded=True)
+
+    @staticmethod
+    def hash_url(video_url: str) -> str:
+        return hashlib.md5(video_url.encode()).hexdigest()
+
+    def is_processed(self, video_url: str):
+        video_record = VideoCRUD().get_by_hash(self.hash_url(video_url))
+        return video_record.is_downloaded
 
     @classmethod
     def from_url(cls, video_url: str):
@@ -52,12 +59,15 @@ class YoutubeVideoProcessor:
         yt = YouTube(video_url)
         yt.check_availability()
 
-        url_hash = hashlib.md5(video_url.encode()).hexdigest()
-        video_record = VideoCRUD().create(
-            url=video_url,
-            hash_sum=url_hash,
-            type='youtube',
-            title=yt.title,
-            video_path=settings.videos_directory / f"{url_hash}.mp4",
-        )
+        url_hash = cls.hash_url(video_url)
+        if not VideoCRUD().get_by_hash(url_hash):
+            video_record = VideoCRUD().create(
+                url=video_url,
+                hash_sum=url_hash,
+                video_type='youtube',
+                title=yt.title,
+                video_path=str(Path(settings.videos_directory) / f"{url_hash}.mp4"),
+            )
+        else:
+            video_record = VideoCRUD().get_by_hash(url_hash)
         return cls(video_record)

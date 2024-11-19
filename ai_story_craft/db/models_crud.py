@@ -21,6 +21,11 @@ class VideoCRUD(CRUD):
     def __init__(self):
         super().__init__(Video)
 
+    def get_by_hash(self, hash_sum: str):
+        with self.scoped_session() as session:
+            instance = session.query(self.model).filter_by(hash_sum=hash_sum).first()
+        return instance
+
 
 class AgentCRUD(CRUD):
     def __init__(self):
