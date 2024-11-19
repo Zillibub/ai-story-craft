@@ -57,6 +57,25 @@ class YoutubeVideoProcessor:
         video_record = VideoCRUD().get_by_hash(self.hash_url(video_url))
         return video_record.is_downloaded
 
+    @staticmethod
+    def get_duration(video_url: str) -> int:
+        """
+        Get the duration of a YouTube video in seconds
+        :param video_url:
+        :return:
+        """
+        yt = YouTube(video_url)
+        yt.check_availability()
+        return yt.length
+
+    @staticmethod
+    def check_availability(video_url: str):
+        yt = YouTube(video_url)
+        try:
+            yt.check_availability()
+        except Exception as e:
+            raise ValueError(e)
+
     @classmethod
     def from_url(cls, video_url: str):
 

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = 'pyamqp://'
     CELERY_BACKEND_URL: str = 'redis://localhost'
 
+    max_video_duration: int = 3600
+
     # LANGFUSE_HOST: str = 'http://localhost:3000'
     # LANGFUSE_PUBLIC_KEY: str
     # LANGFUSE_SECRET_KEY: str

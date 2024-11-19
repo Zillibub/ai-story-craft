@@ -9,8 +9,7 @@ from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video, check_celery_worker
-from integrations.messenger import MessageSender
-
+from video_processing.youtube_video_processor import YoutubeVideoProcessor
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -23,6 +22,7 @@ openai.api_key = settings.OPENAI_API_KEY
 
 client = Client(intents=intents)
 tree = app_commands.CommandTree(client)
+
 
 def update_conversation_history(channel_id, question, answer):
     conversation_history[channel_id].append({'question': question, 'answer': answer})
@@ -53,7 +53,6 @@ async def on_message(message: Message):
 
 
 async def retrieve_active_agent(interaction: Union[discord.Interaction, discord.Message]) -> Union[None, LangChanAgent]:
-
     chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
     if chat is None:
         await interaction.followup.send("No video is currently selected. Please select a video first.")
@@ -157,6 +156,18 @@ async def add_video(interaction: discord.Interaction, video_url: str):
     is_worker_running = check_celery_worker()
     if not is_worker_running:
         await interaction.followup.send("Video import is not available. Please try again later.")
+        return
+
+    try:
+        YoutubeVideoProcessor.check_availability(video_url)
+    except ValueError as e:
+        await interaction.followup.send(f"Error processing video: {str(e)}")
+        return
+
+    if YoutubeVideoProcessor.get_duration(video_url) > settings.max_video_duration:
+        await interaction.followup.send(
+            f"Video is too long. Maximum duration is {settings.max_video_duration} seconds."
+        )
         return
 
     message = await interaction.followup.send(f"Starting video processing")
