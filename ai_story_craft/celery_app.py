@@ -36,8 +36,8 @@ def process_youtube_video(youtube_url: str, update_sender: dict = None):
 
     StoryCraft(
         work_directory=Path(settings.working_directory) / video_processor.video_record.hash_sum,
-        video_path=video_processor.video_record.video_path,
-        audio_path=video_processor.video_record.audio_path
+        video_path=Path(video_processor.video_record.video_path),
+        audio_path=Path(video_processor.video_record.audio_path) if video_processor.video_record.audio_path else None
     ).evaluate(assistant_name=video_processor.video_record.title)
 
     if update_sender:

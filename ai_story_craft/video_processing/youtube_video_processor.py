@@ -41,9 +41,13 @@ class YoutubeVideoProcessor:
             if not has_audio:
                 audio_path = Path(settings.videos_directory, f"{self.video_record.hash_sum}.wav")
                 download_audio(Path(self.video_record.url), audio_path)
-                self.video_record = VideoCRUD().update(self.video_record, audio_path=audio_path)
+                self.video_record = VideoCRUD().update(
+                    id=self.video_record.id,
+                    audio_path=str(audio_path),
+                    has_audio=False
+                )
 
-        self.video_record = VideoCRUD().update(self.video_record, is_downloaded=True)
+        self.video_record = VideoCRUD().update(id=self.video_record.id, is_downloaded=True)
 
     @staticmethod
     def hash_url(video_url: str) -> str:
