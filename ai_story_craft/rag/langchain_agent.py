@@ -107,7 +107,12 @@ class LangChanAgent:
         )
         return rag_chain.invoke({"text": text})
 
-    def get_image(self, description: str) -> Tuple[bytes, str]:
+    def get_image(self, description: str) -> Tuple[bytes, str, str]:
+        """
+        Get image from video based on description
+        :param description: screenshot description
+        :return: [image_bytes, image_name, readable_timestamp]
+        """
         docs = self.retriever.invoke(description)
         prompt = ChatPromptTemplate(
             messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
@@ -124,6 +129,11 @@ class LangChanAgent:
         image_timestamp = rag_chain.invoke(
             description + ", Subtitles: " + "\n\n".join(doc.page_content for doc in docs)
         ).content
+
+        # Convert timestamp to readable format
+        minutes = int(float(image_timestamp)) // 60
+        seconds = int(float(image_timestamp)) % 60
+        readable_timestamp = f"{minutes:02d}:{seconds:02d}"
 
         prompt = ChatPromptTemplate(
             messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(
@@ -146,7 +156,7 @@ class LangChanAgent:
         )
         image_bytes, _ = process.communicate()
 
-        return image_bytes, image_file_name
+        return image_bytes, image_file_name, readable_timestamp
 
     @classmethod
     def create(

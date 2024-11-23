@@ -67,12 +67,13 @@ async def get_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Please provide Screenshot description")
         return
 
-    image_bytes, image_name = agent.get_image(update.message.text)
+    image_bytes, image_name, readable_timestamp = agent.get_image(update.message.text)
     await update.message.reply_document(
         document=image_bytes,
         write_timeout=500,
         filename=image_name,
-        reply_to_message_id=update.message.id
+        reply_to_message_id=update.message.id,
+        caption=f"Timestamp: {readable_timestamp}"
     )
 
 

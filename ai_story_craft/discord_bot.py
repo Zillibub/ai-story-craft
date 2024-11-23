@@ -69,7 +69,7 @@ async def retrieve_active_agent(interaction: Union[discord.Interaction, discord.
 
 
 @tree.command(name='screenshot', description='Get screenshot')
-async def get_screenshot(interaction: discord.Interaction, description: str):
+async def screenshot(interaction: discord.Interaction, description: str):
     await interaction.response.defer()  # noqa no idea why pycharm complains about this, it works
 
     agent = await retrieve_active_agent(interaction)
@@ -79,8 +79,11 @@ async def get_screenshot(interaction: discord.Interaction, description: str):
         await interaction.followup.send("Please provide Screenshot description")
         return
 
-    image_bytes, image_name = agent.get_image(description)
-    await interaction.followup.send(file=discord.File(io.BytesIO(image_bytes), filename=image_name))
+    image_bytes, image_name, readable_timestamp = agent.get_image(description)
+    await interaction.followup.send(
+        f"Timestamp: {readable_timestamp}",
+        file=discord.File(io.BytesIO(image_bytes), filename=image_name)
+    )
 
 
 @tree.command(name='videos', description='List available videos')
