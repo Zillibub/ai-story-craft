@@ -45,7 +45,14 @@ def extract_subtitles_local(
         model_name: str = "base",
         audio_path: Path = None
 ):
-    """Extract subtitles using local Whisper model"""
+    """
+    Extract subtitles using local Whisper model
+    :param video_path:
+    :param output_path:
+    :param model_name:
+    :param audio_path:
+    :return:
+    """
     if not video_path.exists():
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
@@ -62,21 +69,9 @@ def extract_subtitles_local(
         
         # Perform transcription
         result = model.transcribe(str(audio_path))
-        
-        # Convert to format compatible with API output
-        formatted_result = {
-            "segments": [
-                {
-                    "start": segment["start"],
-                    "end": segment["end"],
-                    "text": segment["text"]
-                }
-                for segment in result["segments"]
-            ]
-        }
 
         with open(output_path, "w", encoding="utf-8") as srt:
-            json.dump(formatted_result, srt)
+            json.dump(result, srt)
 
 
 def extract_subtitles(
