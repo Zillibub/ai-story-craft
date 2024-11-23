@@ -5,13 +5,15 @@ from openai import OpenAI
 from typing import Iterator, TextIO
 from pathlib import Path
 from core.settings import settings
+import whisper
 
 
-def extract_subtitles(
+def extract_subtitles_api(
         video_path: Path,
         output_path: Path,
         audio_path: Path = None
 ):
+    """Extract subtitles using OpenAI's Whisper API"""
     if not video_path.exists():
         raise FileNotFoundError(f"Video file not found: {video_path}")
 
@@ -24,9 +26,10 @@ def extract_subtitles(
                 str(audio_path),
                 acodec="libmp3lame", ab="32k", ac=1, ar="8k"
             ).run(quiet=True, overwrite_output=True)
+        
         with open(audio_path, "rb") as audio_file:
             transcription = client.audio.transcriptions.create(
-                model="whisper-1",
+                model=settings.whisper_api_model,
                 file=audio_file,
                 response_format="verbose_json",
                 timestamp_granularities=["segment"]
@@ -34,6 +37,58 @@ def extract_subtitles(
 
         with open(output_path, "w", encoding="utf-8") as srt:
             json.dump(dict(transcription), srt)
+
+
+def extract_subtitles_local(
+        video_path: Path,
+        output_path: Path,
+        model_name: str = "base",
+        audio_path: Path = None
+):
+    """Extract subtitles using local Whisper model"""
+    if not video_path.exists():
+        raise FileNotFoundError(f"Video file not found: {video_path}")
+
+    # Load the Whisper model
+    model = whisper.load_model(model_name)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        if not audio_path:
+            audio_path = Path(temp_dir, video_path.stem + '.mp3')
+            ffmpeg.input(str(video_path)).output(
+                str(audio_path),
+                acodec="libmp3lame", ab="32k", ac=1, ar="8k"
+            ).run(quiet=True, overwrite_output=True)
+        
+        # Perform transcription
+        result = model.transcribe(str(audio_path))
+        
+        # Convert to format compatible with API output
+        formatted_result = {
+            "segments": [
+                {
+                    "start": segment["start"],
+                    "end": segment["end"],
+                    "text": segment["text"]
+                }
+                for segment in result["segments"]
+            ]
+        }
+
+        with open(output_path, "w", encoding="utf-8") as srt:
+            json.dump(formatted_result, srt)
+
+
+def extract_subtitles(
+        video_path: Path,
+        output_path: Path,
+        audio_path: Path = None
+):
+    """Main function to extract subtitles using either API or local model based on settings"""
+    if settings.whisper_use_api:
+        return extract_subtitles_api(video_path, output_path, audio_path)
+    else:
+        return extract_subtitles_local(video_path, output_path, settings.whisper_model, audio_path)
 
 
 def write_srt(transcript: Iterator[dict], file: TextIO):

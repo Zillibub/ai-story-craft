@@ -4,6 +4,9 @@ from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     whisper_model: str = 'turbo'
+    whisper_use_api: bool = True
+    whisper_api_model: str = 'whisper-1'  # only one model is supported for now
+
     assistant_model: str = 'gpt-4o'
     OPENAI_API_KEY: str
 
