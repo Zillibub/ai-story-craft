@@ -135,7 +135,7 @@ async def activate_agent(interaction: discord.Interaction, agent_name: str):
 
 
 @tree.command(name='story_map', description='Generate story map for selected video')
-async def create_story_map(interaction: discord.Interaction):
+async def story_map(interaction: discord.Interaction):
     await interaction.response.defer()  # noqa
 
     agent = await retrieve_active_agent(interaction)

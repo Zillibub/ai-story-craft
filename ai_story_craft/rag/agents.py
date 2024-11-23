@@ -24,7 +24,8 @@ class Formatter:
         **text** - Bold text, *text* - Italicize text, __text__ - Underline text,
         ~~text~~ - Strikethrough text, `text` - highlight part of a piece of code
         
-        Split the reply in chunks of 2000 symbols.
+        Split the reply in chunks with maximum size of 2000 symbols.
+        Slit the text logically, try not to break any big parts. 
         Return them as in json format as a list of strings.
         
         Text: {text} \nAnswer:
@@ -70,15 +71,14 @@ class ProductManager:
         You will be provided with a video subtitles with product description. 
         Create a user story map for the presented product. 
         Each task should have the following information: 
-        1. Description 2. Goal 3. Reason 
+        1. Description. Provide actions, performed by the user. Write at least 2-3 sentences. 
+        If there are any specific terms or definitions, try to add the to the description. 
         
-        In description provide actions, performed by the user, 2-3 sentences. 
-        In goal provide the reason for the action, 1-2 sentences.
-        In reason provide the benefit of the action, 1-2 sentences.
+        2. Goal. provide the reason for the action, 1-2 sentences.
+        
+        3. Reason. provide the benefit of the action, 1-2 sentences.
         
         Return only user story map. Use only provided information.  
-        
-        Your reply should be no more than 4096 characters.
         
         Video subtitles: {subtitles} \nAnswer:
     """
