@@ -1,6 +1,5 @@
 import time
-from integrations.messenger_sender import TelegramMessageSender as TelegramMessageSender
-from integrations.discord_messenger import DiscordMessageSender
+from integrations.messenger_sender import messenger_factory, BaseMessageSender
 from pathlib import Path
 from celery import Celery
 from story_craft import StoryCraft
@@ -22,10 +21,7 @@ def check_celery_worker() -> bool:
 @celery_app.task
 def process_youtube_video(youtube_url: str, update_sender: dict = None):
     if update_sender:
-        if 'chat_id' in update_sender:
-            update_sender = TelegramMessageSender.from_dict(update_sender)
-        else:
-            update_sender = DiscordMessageSender.from_dict(update_sender)
+        update_sender = messenger_factory(update_sender)
         update_sender.update_message("Processing video...")
         
     if not Path(settings.working_directory).exists():

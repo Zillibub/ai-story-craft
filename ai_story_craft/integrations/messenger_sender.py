@@ -77,12 +77,15 @@ class DiscordMessageSender(BaseMessageSender):
         channel = await self._get_channel()
         return await channel.fetch_message(self.update_message_id)
 
-    async def send_message(self, text: str):
+    async def _send_message(self, text: str):
         channel = await self._get_channel()
         await channel.send(text)
         await self.client.close()
 
-    async def update_message(self, text: str):
+    def send_message(self, text: str):
+        asyncio.run(self._send_message(text))
+
+    async def _update_message(self, text: str):
         """
         Update message
         :param text:
@@ -95,6 +98,9 @@ class DiscordMessageSender(BaseMessageSender):
         message = await self._get_message()
         await message.edit(content=text)
         await self.client.close()
+
+    def update_message(self, text: str):
+        asyncio.run(self._update_message(text))
 
     def to_dict(self):
         return {
