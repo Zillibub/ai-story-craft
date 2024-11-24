@@ -1,5 +1,6 @@
 import time
-from integrations.messenger import MessageSender
+from integrations.messenger import MessageSender as TelegramMessageSender
+from integrations.discord_messenger import DiscordMessageSender
 from pathlib import Path
 from celery import Celery
 from story_craft import StoryCraft
@@ -20,19 +21,25 @@ def check_celery_worker() -> bool:
 
 @celery_app.task
 def process_youtube_video(youtube_url: str, update_sender: dict = None):
-    update_sender = MessageSender.from_dict(update_sender) if update_sender else None
     if update_sender:
+        if 'chat_id' in update_sender:
+            update_sender = TelegramMessageSender.from_dict(update_sender)
+        else:
+            update_sender = DiscordMessageSender.from_dict(update_sender)
         update_sender.update_message("Processing video...")
+        
     if not Path(settings.working_directory).exists():
         if update_sender:
-            update_sender.update_message(f"Working directory not found: {settings.working_directory}")
+            update_sender.send_message(f"Working directory not found: {settings.working_directory}")
         raise FileNotFoundError(f"Working directory not found: {settings.working_directory}")
 
     video_processor = YoutubeVideoProcessor.from_url(youtube_url)
+    if update_sender:
+        update_sender.send_message("Downloading video...")
     video_processor.process()
 
     if update_sender:
-        update_sender.update_message("Importing subtitles...")
+        update_sender.send_message("Extracting subtitles...")
 
     StoryCraft(
         work_directory=Path(settings.working_directory) / video_processor.video_record.hash_sum,
@@ -41,7 +48,7 @@ def process_youtube_video(youtube_url: str, update_sender: dict = None):
     ).evaluate(assistant_name=video_processor.video_record.title)
 
     if update_sender:
-        update_sender.update_message("Video processed.")
+        update_sender.send_message("Video processed successfully.")
 
 @celery_app.task
 def wait(update_sender: dict):
