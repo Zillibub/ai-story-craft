@@ -1,5 +1,5 @@
 import time
-from integrations.messenger import MessageSender as TelegramMessageSender
+from integrations.messenger_sender import TelegramMessageSender as TelegramMessageSender
 from integrations.discord_messenger import DiscordMessageSender
 from pathlib import Path
 from celery import Celery

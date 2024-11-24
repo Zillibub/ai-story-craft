@@ -17,7 +17,7 @@ from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video
-from integrations.messenger import MessageSender
+from integrations.messenger_sender import TelegramMessageSender
 
 # Conversation history dictionary
 conversation_history = defaultdict(lambda: deque(maxlen=10))
@@ -138,7 +138,7 @@ async def add_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = await update.message.reply_text(f"Starting video processing")
     process_youtube_video.delay(
         youtube_url=video_url,
-        update_sender=MessageSender(update.message.chat_id, message.message_id).to_dict()
+        update_sender=TelegramMessageSender(update.message.chat_id, message.message_id).to_dict()
     )
 
 

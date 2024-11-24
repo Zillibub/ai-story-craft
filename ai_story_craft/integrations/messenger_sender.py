@@ -5,16 +5,31 @@ from core.settings import settings
 
 
 def messenger_factory(messenger_dict):
-    if messenger_dict['class'] == MessageSender.__class__.__name__:
-        return MessageSender.from_dict(messenger_dict)
+    if messenger_dict['class'] == TelegramMessageSender.__class__.__name__:
+        return TelegramMessageSender.from_dict(messenger_dict)
     elif messenger_dict['class'] == DiscordMessageSender.__class__.__name__:
         return DiscordMessageSender.from_dict(messenger_dict)
     else:
         raise ValueError("Invalid class name in messenger_dict")
 
 
+class BaseMessageSender:
+    def send_message(self, text: str):
+        raise NotImplementedError
 
-class MessageSender:
+    def update_message(self, text: str):
+        raise NotImplementedError
+
+    def to_dict(self):
+        raise NotImplementedError
+
+    @classmethod
+    def from_dict(cls, data):
+        raise NotImplementedError
+
+
+
+class TelegramMessageSender(BaseMessageSender):
 
     def __init__(self, chat_id: int, update_message_id: int):
         self.chat_id = chat_id
@@ -48,7 +63,7 @@ class MessageSender:
         return cls(chat_id=data['chat_id'], update_message_id=data['update_message_id'])
 
 
-class DiscordMessageSender:
+class DiscordMessageSender(BaseMessageSender):
     def __init__(self, channel_id: int, update_message_id: int):
         self.channel_id = channel_id
         self.update_message_id = update_message_id
