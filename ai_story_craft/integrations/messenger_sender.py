@@ -5,9 +5,9 @@ from core.settings import settings
 
 
 def messenger_factory(messenger_dict):
-    if messenger_dict['class'] == TelegramMessageSender.__class__.__name__:
+    if messenger_dict['class'] == TelegramMessageSender.__name__:
         return TelegramMessageSender.from_dict(messenger_dict)
-    elif messenger_dict['class'] == DiscordMessageSender.__class__.__name__:
+    elif messenger_dict['class'] == DiscordMessageSender.__name__:
         return DiscordMessageSender.from_dict(messenger_dict)
     else:
         raise ValueError("Invalid class name in messenger_dict")
@@ -67,11 +67,17 @@ class DiscordMessageSender(BaseMessageSender):
     def __init__(self, channel_id: int, update_message_id: int):
         self.channel_id = channel_id
         self.update_message_id = update_message_id
-        self.client = discord.Client(intents=discord.Intents.default())
+        self.client = None
+
+    async def _get_client(self):
+        if self.client is None or self.client.is_closed():
+            self.client = discord.Client(intents=discord.Intents.default())
+            await self.client.login(settings.discord_bot_token)
+        return self.client
 
     async def _get_channel(self):
-        await self.client.login(settings.discord_bot_token)
-        return await self.client.fetch_channel(self.channel_id)
+        client = await self._get_client()
+        return await client.fetch_channel(self.channel_id)
 
     async def _get_message(self):
         channel = await self._get_channel()
@@ -80,24 +86,16 @@ class DiscordMessageSender(BaseMessageSender):
     async def _send_message(self, text: str):
         channel = await self._get_channel()
         await channel.send(text)
-        await self.client.close()
 
     def send_message(self, text: str):
         asyncio.run(self._send_message(text))
 
     async def _update_message(self, text: str):
-        """
-        Update message
-        :param text:
-        :return:
-        :raises ValueError: if no update_message_id given
-        """
         if not self.update_message_id:
             raise ValueError("no update_message_id given")
 
         message = await self._get_message()
         await message.edit(content=text)
-        await self.client.close()
 
     def update_message(self, text: str):
         asyncio.run(self._update_message(text))
