@@ -1,5 +1,5 @@
 import time
-from integrations.messenger_sender import messenger_factory, BaseMessageSender
+from integrations.messenger_sender import messenger_factory
 from pathlib import Path
 from celery import Celery
 from story_craft import StoryCraft
@@ -19,23 +19,22 @@ def check_celery_worker() -> bool:
         return False
 
 @celery_app.task
-def process_youtube_video(youtube_url: str, update_sender: dict = None):
-    if update_sender:
-        update_sender = messenger_factory(update_sender)
-        update_sender.update_message("Processing video...")
+def process_youtube_video(youtube_url: str, update_sender):
+    update_sender = messenger_factory(update_sender)
+    update_sender.update_message("Processing video...")
         
     if not Path(settings.working_directory).exists():
         if update_sender:
-            update_sender.send_message(f"Working directory not found: {settings.working_directory}")
+            update_sender.update_message(f"Working directory not found: {settings.working_directory}")
         raise FileNotFoundError(f"Working directory not found: {settings.working_directory}")
 
     video_processor = YoutubeVideoProcessor.from_url(youtube_url)
     if update_sender:
-        update_sender.send_message("Downloading video...")
+        update_sender.update_message("Downloading video...")
     video_processor.process()
 
     if update_sender:
-        update_sender.send_message("Extracting subtitles...")
+        update_sender.update_message("Extracting subtitles...")
 
     StoryCraft(
         work_directory=Path(settings.working_directory) / video_processor.video_record.hash_sum,
@@ -44,7 +43,7 @@ def process_youtube_video(youtube_url: str, update_sender: dict = None):
     ).evaluate(assistant_name=video_processor.video_record.title)
 
     if update_sender:
-        update_sender.send_message("Video processed successfully.")
+        update_sender.update_message("Video processed successfully.")
 
 @celery_app.task
 def wait(update_sender: dict):
@@ -53,7 +52,7 @@ def wait(update_sender: dict):
     :param update_sender:
     :return:
     """
-    update_sender = MessageSender.from_dict(update_sender)
+    update_sender = messenger_factory(update_sender)
     update_sender.update_message("Waiting...")
     time.sleep(2)
     update_sender.update_message("Done waiting.")
