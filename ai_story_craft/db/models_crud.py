@@ -2,7 +2,6 @@ from db.base_crud import CRUD, engine
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from db.models import Chat, Agent, ActiveAgent, Message, Video
-from typing import Chat
 
 
 def now():

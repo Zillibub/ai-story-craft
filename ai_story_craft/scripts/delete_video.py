@@ -48,5 +48,6 @@ def delete_video(video_hash: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Deleted video record')
     parser.add_argument('video_hash', type=str, help='Hash of the video to delete')
-    delete_video("some_hash")
+    args = parser.parse_args()
+    delete_video(args.video_hash)
     print("Deleted")
