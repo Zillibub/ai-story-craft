@@ -73,3 +73,15 @@ class Message(Base):
 
     chat = relationship('Chat')
     agent = relationship('Agent')
+
+
+class AgentAccess(Base):
+    __tablename__ = 'agent_accesses'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    chat_id = Column(Integer, ForeignKey('chats.id'))
+    agent_id = Column(Integer, ForeignKey('agents.id'))
+    created_at = Column(DateTime, default=func.now())
+
+    chat = relationship('Chat')
+    agent = relationship('Agent')

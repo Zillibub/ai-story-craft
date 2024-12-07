@@ -2,8 +2,9 @@ import argparse
 from pathlib import Path
 from rag.langchain_agent import LangChanAgent
 from subtitles_extractor import extract_subtitles
-from db.models_crud import AgentCRUD
+from db.models_crud import AgentCRUD, AgentAccessCRUD
 from db.models import Agent
+from db.models_crud import ChatCRUD
 
 
 class StoryCraft:
@@ -28,12 +29,25 @@ class StoryCraft:
 
     def evaluate(
             self,
+            chat_id: str,
             assistant_name: str = None,
             language: str = None,
             overwrite: bool = False
     ) -> Agent:
         if not self.work_directory.exists():
             self.work_directory.mkdir()
+
+        # Get or create chat
+        chat = ChatCRUD().get_by_external_id(chat_id)
+        if chat is None:
+            chat = ChatCRUD().create(chat_id=chat_id)
+
+        # Check if agent already exists
+        existing_agent = AgentCRUD().get_by_name(assistant_name or self.video_path.stem)
+        if existing_agent:
+            # Grant access to existing agent
+            AgentAccessCRUD().grant_access(chat.id, existing_agent.id)
+            return existing_agent
 
         subtitles_path = self.work_directory / 'subtitles.json'
         if not subtitles_path.exists():
@@ -52,11 +66,16 @@ class StoryCraft:
             agent_dir=agent_dir,
             overwrite=overwrite
         )
-        return AgentCRUD().create(
+        
+        # Create agent and grant access
+        created_agent = AgentCRUD().create(
             name=agent.name,
             description=agent.description,
             agent_dir=str(agent_dir)
         )
+        AgentAccessCRUD().grant_access(chat.id, created_agent.id)
+        
+        return created_agent
 
 
 if __name__ == '__main__':
