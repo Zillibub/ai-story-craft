@@ -1,9 +1,14 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
+from enum import Enum as PyEnum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
+
+class VideoType(str, PyEnum):
+    youtube: str = 'youtube'
+    file: str = 'file'
 
 
 class Chat(Base):
@@ -14,6 +19,22 @@ class Chat(Base):
     openai_thread_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now())
     chat_type = Column(Enum('telegram', name='chat_types'), default='telegram')
+
+
+class Video(Base):
+    __tablename__ = 'videos'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    hash_sum = Column(String, nullable=False, unique=True)
+    video_type = Column(Enum(VideoType, name='video_types'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+
+    title = Column(String, nullable=True)
+    video_path = Column(String, nullable=False)
+    has_audio = Column(Boolean, default=True)
+    audio_path = Column(String, nullable=True)
+    url = Column(String, nullable=True)
+    is_downloaded = Column(Boolean, default=False)
 
 
 class Agent(Base):

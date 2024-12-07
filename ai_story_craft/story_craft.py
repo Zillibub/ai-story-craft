@@ -3,6 +3,7 @@ from pathlib import Path
 from rag.langchain_agent import LangChanAgent
 from subtitles_extractor import extract_subtitles
 from db.models_crud import AgentCRUD
+from db.models import Agent
 
 
 class StoryCraft:
@@ -30,7 +31,7 @@ class StoryCraft:
             assistant_name: str = None,
             language: str = None,
             overwrite: bool = False
-    ):
+    ) -> Agent:
         if not self.work_directory.exists():
             self.work_directory.mkdir()
 
@@ -51,7 +52,7 @@ class StoryCraft:
             agent_dir=agent_dir,
             overwrite=overwrite
         )
-        agent_db = AgentCRUD().create(
+        return AgentCRUD().create(
             name=agent.name,
             description=agent.description,
             agent_dir=str(agent_dir)

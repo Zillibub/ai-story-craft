@@ -31,6 +31,8 @@ class CRUD:
             if instance:
                 for attr, value in kwargs.items():
                     setattr(instance, attr, value)
+                session.commit()
+                session.refresh(instance)
                 return instance
         return None
 

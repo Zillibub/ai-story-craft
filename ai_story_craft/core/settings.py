@@ -4,6 +4,9 @@ from pydantic import ConfigDict
 
 class Settings(BaseSettings):
     whisper_model: str = 'turbo'
+    whisper_use_api: bool = True
+    whisper_api_model: str = 'whisper-1'  # only one model is supported for now
+
     assistant_model: str = 'gpt-4o'
     OPENAI_API_KEY: str
 
@@ -20,6 +23,8 @@ class Settings(BaseSettings):
 
     CELERY_BROKER_URL: str = 'pyamqp://'
     CELERY_BACKEND_URL: str = 'redis://localhost'
+
+    max_video_duration: int = 3600
 
     # LANGFUSE_HOST: str = 'http://localhost:3000'
     # LANGFUSE_PUBLIC_KEY: str

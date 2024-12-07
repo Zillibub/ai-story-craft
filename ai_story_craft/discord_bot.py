@@ -9,8 +9,8 @@ from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video, check_celery_worker
-from integrations.messenger import MessageSender
-
+from video_processing.youtube_video_processor import YoutubeVideoProcessor
+from integrations.messenger_sender import DiscordMessageSender
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -23,6 +23,7 @@ openai.api_key = settings.OPENAI_API_KEY
 
 client = Client(intents=intents)
 tree = app_commands.CommandTree(client)
+
 
 def update_conversation_history(channel_id, question, answer):
     conversation_history[channel_id].append({'question': question, 'answer': answer})
@@ -53,7 +54,6 @@ async def on_message(message: Message):
 
 
 async def retrieve_active_agent(interaction: Union[discord.Interaction, discord.Message]) -> Union[None, LangChanAgent]:
-
     chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
     if chat is None:
         await interaction.followup.send("No video is currently selected. Please select a video first.")
@@ -70,7 +70,7 @@ async def retrieve_active_agent(interaction: Union[discord.Interaction, discord.
 
 
 @tree.command(name='screenshot', description='Get screenshot')
-async def get_screenshot(interaction: discord.Interaction, description: str):
+async def screenshot(interaction: discord.Interaction, description: str):
     await interaction.response.defer()  # noqa no idea why pycharm complains about this, it works
 
     agent = await retrieve_active_agent(interaction)
@@ -80,8 +80,11 @@ async def get_screenshot(interaction: discord.Interaction, description: str):
         await interaction.followup.send("Please provide Screenshot description")
         return
 
-    image_bytes, image_name = agent.get_image(description)
-    await interaction.followup.send(file=discord.File(io.BytesIO(image_bytes), filename=image_name))
+    image_bytes, image_name, readable_timestamp = agent.get_image(description)
+    await interaction.followup.send(
+        f"Timestamp: {readable_timestamp}",
+        file=discord.File(io.BytesIO(image_bytes), filename=image_name)
+    )
 
 
 @tree.command(name='videos', description='List available videos')
@@ -136,7 +139,7 @@ async def activate_agent(interaction: discord.Interaction, agent_name: str):
 
 
 @tree.command(name='story_map', description='Generate story map for selected video')
-async def create_story_map(interaction: discord.Interaction):
+async def story_map(interaction: discord.Interaction):
     await interaction.response.defer()  # noqa
 
     agent = await retrieve_active_agent(interaction)
@@ -159,9 +162,22 @@ async def add_video(interaction: discord.Interaction, video_url: str):
         await interaction.followup.send("Video import is not available. Please try again later.")
         return
 
+    try:
+        YoutubeVideoProcessor.check_availability(video_url)
+    except ValueError as e:
+        await interaction.followup.send(f"Error processing video: {str(e)}")
+        return
+
+    if YoutubeVideoProcessor.get_duration(video_url) > settings.max_video_duration:
+        await interaction.followup.send(
+            f"Video is too long. Maximum duration is {settings.max_video_duration} seconds."
+        )
+        return
+
     message = await interaction.followup.send(f"Starting video processing")
     process_youtube_video.delay(
         youtube_url=video_url,
+        update_sender=DiscordMessageSender(interaction.channel_id, message.id).to_dict()
     )
 
 
