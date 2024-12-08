@@ -2,9 +2,8 @@ import argparse
 from pathlib import Path
 from rag.langchain_agent import LangChanAgent
 from subtitles_extractor import extract_subtitles
-from db.models_crud import AgentCRUD, AgentAccessCRUD
-from db.models import Agent
-from db.models_crud import ChatCRUD
+from db.models_crud import AgentCRUD, AgentAccessCRUD, ChatCRUD, VideoCRUD
+from db.models import Agent, Video
 
 
 class StoryCraft:
@@ -12,18 +11,17 @@ class StoryCraft:
     def __init__(
             self,
             work_directory: Path,
-            video_path: Path,
-            audio_path: Path = None
+            video_db: Video,
     ):
         """
 
         :param work_directory: directory to store the files for the video
-        :param video_path:
-        :param audio_path:
+        :param video_db:  database record
         """
         self.work_directory = work_directory
-        self.video_path = video_path
-        self.audio_path = audio_path
+        self.video = video_db
+        self.video_path = Path(video_db.video_path)
+        self.audio_path = Path(video_db.audio_path) if video_db.audio_path else None
 
         self.work_directory.mkdir(exist_ok=True)
 
@@ -37,13 +35,15 @@ class StoryCraft:
         if not self.work_directory.exists():
             self.work_directory.mkdir()
 
+        assistant_name = assistant_name or self.video_path.stem
+
         # Get or create chat
         chat = ChatCRUD().get_by_external_id(external_chat_id)
         if chat is None:
             chat = ChatCRUD().create(chat_id=external_chat_id)
 
         # Check if agent already exists
-        existing_agent = AgentCRUD().get_by_name(assistant_name or self.video_path.stem)
+        existing_agent = AgentCRUD().get_by_name(assistant_name)
         if existing_agent:
             # Grant access to existing agent
             AgentAccessCRUD().grant_access(chat.id, existing_agent.id)
@@ -60,7 +60,7 @@ class StoryCraft:
         agent_dir = self.work_directory / 'agent'
 
         agent = LangChanAgent.create(
-            name=assistant_name or self.video_path.stem,
+            name=assistant_name,
             video_path=self.video_path,
             subtitle_file_path=subtitles_path,
             agent_dir=agent_dir,
@@ -81,7 +81,7 @@ class StoryCraft:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Creates assistant')
-    parser.add_argument('-v', '--video_path', type=str, required=True,
+    parser.add_argument('-v', '--video_id', type=str, required=True,
                         help='Path to the video file')
     parser.add_argument('-d', '--work_directory', type=str, required=True,
                         help='Path to the output working directory')
@@ -92,8 +92,9 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--overwrite', type=bool, required=False,
                         help='Override folder if exists')
     args = parser.parse_args()
+    video_db = VideoCRUD().read(args.video_id)
     StoryCraft(
-        video_path=Path(args.video_path),
+        video_db=video_db,
         work_directory=Path(args.work_directory)
     ).evaluate(
         assistant_name=args.assistant_name,

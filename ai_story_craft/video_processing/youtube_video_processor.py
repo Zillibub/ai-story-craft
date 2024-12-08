@@ -19,10 +19,10 @@ class YoutubeVideoProcessor:
     def __init__(self, video_record: Video):
         self.video_record = video_record
 
-    def process(self):
+    def process(self) -> Video:
 
         if self.video_record.is_downloaded:
-            return
+            return self.video_record
 
         parsed_url = urlparse(self.video_record.url)
         query_params = parse_qs(parsed_url.query)
@@ -48,6 +48,7 @@ class YoutubeVideoProcessor:
                 )
 
         self.video_record = VideoCRUD().update(id=self.video_record.id, is_downloaded=True)
+        return self.video_record
 
     @staticmethod
     def hash_url(video_url: str) -> str:
