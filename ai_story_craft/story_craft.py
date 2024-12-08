@@ -29,7 +29,7 @@ class StoryCraft:
 
     def evaluate(
             self,
-            chat_id: str,
+            external_chat_id: str,
             assistant_name: str = None,
             language: str = None,
             overwrite: bool = False
@@ -38,9 +38,9 @@ class StoryCraft:
             self.work_directory.mkdir()
 
         # Get or create chat
-        chat = ChatCRUD().get_by_external_id(chat_id)
+        chat = ChatCRUD().get_by_external_id(external_chat_id)
         if chat is None:
-            chat = ChatCRUD().create(chat_id=chat_id)
+            chat = ChatCRUD().create(chat_id=external_chat_id)
 
         # Check if agent already exists
         existing_agent = AgentCRUD().get_by_name(assistant_name or self.video_path.stem)
