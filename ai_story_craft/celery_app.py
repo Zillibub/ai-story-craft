@@ -42,6 +42,7 @@ def process_youtube_video(youtube_url: str, update_sender):
     ).evaluate(
         external_chat_id=update_sender.external_chat_id,
         assistant_name=video_processor.video_record.title,
+        overwrite=True,
     )
 
     if update_sender:
