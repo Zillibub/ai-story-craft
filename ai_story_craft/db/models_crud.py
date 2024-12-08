@@ -97,13 +97,13 @@ class AgentAccessCRUD(CRUD):
     def __init__(self):
         super().__init__(AgentAccess)
 
-    def get_by_chat_and_agent(self, chat_id: int, agent_id: int) -> AgentAccess | None:
+    def has_access(self, chat_id: int, agent_id: int) ->bool:
         with self.scoped_session() as session:
             instance = session.query(self.model).filter_by(
                 chat_id=chat_id, 
                 agent_id=agent_id
             ).first()
-        return instance
+        return instance is not None
 
     def get_chat_agents(self, chat_id: int) -> list[AgentAccess]:
         with self.scoped_session() as session:
@@ -115,4 +115,25 @@ class AgentAccessCRUD(CRUD):
             instance = self.model(chat_id=chat_id, agent_id=agent_id)
             session.add(instance)
             session.commit()
+        return instance
+
+    def get_chat_accessible_agents(self, chat_id: int) -> list[Agent]:
+        with self.scoped_session() as session:
+            instances = session.query(Agent).join(
+                AgentAccess, 
+                AgentAccess.agent_id == Agent.id
+            ).filter(
+                AgentAccess.chat_id == chat_id
+            ).all()
+        return instances
+
+    def get_by_agent_name(self, chat_id: int, agent_name: str) -> AgentAccess | None:
+        with self.scoped_session() as session:
+            instance = session.query(self.model).join(
+                Agent,
+                Agent.id == self.model.agent_id
+            ).filter(
+                self.model.chat_id == chat_id,
+                Agent.name == agent_name
+            ).first()
         return instance

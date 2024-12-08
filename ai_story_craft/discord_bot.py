@@ -5,7 +5,7 @@ from typing import Union
 import openai
 import io
 from collections import deque, defaultdict
-from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
+from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD, AgentAccessCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video, check_celery_worker
@@ -90,7 +90,9 @@ async def screenshot(interaction: discord.Interaction, description: str):
 @tree.command(name='videos', description='List available videos')
 async def get_agents(interaction: discord.Interaction):
     await interaction.response.defer()  # noqa
-    agents = AgentCRUD().get_list()
+    chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
+    agents = AgentAccessCRUD().get_chat_accessible_agents(chat.id)
+
     if len(agents) == 0:
         reply = "No videos available."
     else:
@@ -118,17 +120,17 @@ async def get_active_agent(interaction: discord.Interaction):
 async def activate_agent(interaction: discord.Interaction, agent_name: str):
     await interaction.response.defer()  # noqa
     if not agent_name:
-        await interaction.followup.send("Please provide an video name.")
-        return
-
-    agent = AgentCRUD().get_by_name(agent_name)
-    if agent is None:
-        await interaction.followup.send(f"Video {agent_name} not found.")
+        await interaction.followup.send("Please provide a video name.")
         return
 
     chat = ChatCRUD().get_by_external_id(str(interaction.channel.id))
     if chat is None:
         chat = ChatCRUD().create(chat_id=interaction.channel.id)
+
+    agent = AgentAccessCRUD().get_by_agent_name(chat_id=chat.id, agent_name=agent_name)
+    if agent is None:
+        await interaction.followup.send(f"Video {agent_name} not found.")
+        return
 
     active_agent = ActiveAgentCRUD().activate_agent(chat.id, agent.id)
 

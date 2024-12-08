@@ -78,6 +78,7 @@ async def get_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_agents(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    accessible_agents = AgentAccessCRUD().get_chat_accessible_agents(update.message.chat_id)
     agents = AgentCRUD().get_list()
     if len(agents) == 0:
         reply = "No videos available."
@@ -116,7 +117,7 @@ async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat = ChatCRUD().create(chat_id=str(update.message.chat_id))
 
     # Check if chat has access to this agent
-    access = AgentAccessCRUD().get_by_chat_and_agent(chat.id, agent.id)
+    access = AgentAccessCRUD().has_access(chat.id, agent.id)
     if access is None:
         # Grant access if agent exists
         AgentAccessCRUD().grant_access(chat.id, agent.id)
