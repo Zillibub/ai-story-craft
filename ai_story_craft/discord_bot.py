@@ -5,7 +5,7 @@ from typing import Union
 import openai
 import io
 from collections import deque, defaultdict
-from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD, AgentAccessCRUD
+from db.models_crud import ActiveAgentCRUD, ChatCRUD, AgentAccessCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video, check_celery_worker
