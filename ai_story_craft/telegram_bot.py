@@ -13,7 +13,7 @@ import openai
 # from langfuse.openai import openai
 # from langfuse.decorators import observe
 from collections import deque, defaultdict
-from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD
+from db.models_crud import AgentCRUD, ActiveAgentCRUD, ChatCRUD, AgentAccessCRUD
 from agent_manager import AgentManager
 from rag.langchain_agent import LangChanAgent
 from celery_app import process_youtube_video
@@ -78,11 +78,12 @@ async def get_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def get_agents(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    accessible_agents = AgentAccessCRUD().get_chat_accessible_agents(update.message.chat_id)
     agents = AgentCRUD().get_list()
     if len(agents) == 0:
         reply = "No videos available."
     else:
-        reply = "Available videos:\n" + "\t\n".join([agent.name for agent in agents])
+        reply = "Available videos:\n" + "\t\n".join([agent.name for agent in accessible_agents])
     await update.message.reply_text(reply)
 
 
@@ -103,7 +104,7 @@ async def get_active_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agent_name = context.args[0]
     if not agent_name:
-        await update.message.reply_text("Please provide an video name.")
+        await update.message.reply_text("Please provide a video name.")
         return
 
     agent = AgentCRUD().get_by_name(agent_name)
@@ -113,7 +114,13 @@ async def activate_agent(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat = ChatCRUD().get_by_external_id(str(update.message.chat_id))
     if chat is None:
-        chat = ChatCRUD().create(chat_id=update.message.chat_id)
+        chat = ChatCRUD().create(chat_id=str(update.message.chat_id))
+
+    # Check if chat has access to this agent
+    access = AgentAccessCRUD().has_access(chat.id, agent.id)
+    if access is None:
+        # Grant access if agent exists
+        AgentAccessCRUD().grant_access(chat.id, agent.id)
 
     active_agent = ActiveAgentCRUD().activate_agent(chat.id, agent.id)
 

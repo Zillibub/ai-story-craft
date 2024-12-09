@@ -1,7 +1,7 @@
 from db.base_crud import CRUD, engine
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
-from db.models import Chat, Agent, ActiveAgent, Message, Video
+from db.models import Chat, Agent, ActiveAgent, Message, Video, AgentAccess
 
 
 def now():
@@ -91,3 +91,49 @@ class MessageCRUD(CRUD):
         with self.scoped_session() as session:
             instances = session.query(self.model).filter_by(session_id=session_id).all()
         return instances
+
+
+class AgentAccessCRUD(CRUD):
+    def __init__(self):
+        super().__init__(AgentAccess)
+
+    def has_access(self, chat_id: int, agent_id: int) ->bool:
+        with self.scoped_session() as session:
+            instance = session.query(self.model).filter_by(
+                chat_id=chat_id, 
+                agent_id=agent_id
+            ).first()
+        return instance is not None
+
+    def get_chat_agents(self, chat_id: int) -> list[AgentAccess]:
+        with self.scoped_session() as session:
+            instances = session.query(self.model).filter_by(chat_id=chat_id).all()
+        return instances
+
+    def grant_access(self, chat_id: int, agent_id: int) -> AgentAccess:
+        with self.scoped_session() as session:
+            instance = self.model(chat_id=chat_id, agent_id=agent_id)
+            session.add(instance)
+            session.commit()
+        return instance
+
+    def get_chat_accessible_agents(self, chat_id: int) -> list[Agent]:
+        with self.scoped_session() as session:
+            instances = session.query(Agent).join(
+                AgentAccess, 
+                AgentAccess.agent_id == Agent.id
+            ).filter(
+                AgentAccess.chat_id == chat_id
+            ).all()
+        return instances
+
+    def get_by_agent_name(self, chat_id: int, agent_name: str) -> AgentAccess | None:
+        with self.scoped_session() as session:
+            instance = session.query(self.model).join(
+                Agent,
+                Agent.id == self.model.agent_id
+            ).filter(
+                self.model.chat_id == chat_id,
+                Agent.name == agent_name
+            ).first()
+        return instance

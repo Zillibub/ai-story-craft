@@ -31,16 +31,19 @@ def process_youtube_video(youtube_url: str, update_sender):
     video_processor = YoutubeVideoProcessor.from_url(youtube_url)
     if update_sender:
         update_sender.update_message("Downloading video...")
-    video_processor.process()
+    video_db = video_processor.process()
 
     if update_sender:
         update_sender.update_message("Extracting subtitles...")
 
     StoryCraft(
         work_directory=Path(settings.working_directory) / video_processor.video_record.hash_sum,
-        video_path=Path(video_processor.video_record.video_path),
-        audio_path=Path(video_processor.video_record.audio_path) if video_processor.video_record.audio_path else None
-    ).evaluate(assistant_name=video_processor.video_record.title)
+        video_db=video_db
+    ).evaluate(
+        external_chat_id=update_sender.external_chat_id,
+        assistant_name=video_processor.video_record.title,
+        overwrite=True,
+    )
 
     if update_sender:
         update_sender.update_message("Video processed successfully.")

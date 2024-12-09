@@ -4,15 +4,6 @@ import discord
 from core.settings import settings
 
 
-def messenger_factory(messenger_dict):
-    if messenger_dict['class'] == TelegramMessageSender.__name__:
-        return TelegramMessageSender.from_dict(messenger_dict)
-    elif messenger_dict['class'] == DiscordMessageSender.__name__:
-        return DiscordMessageSender.from_dict(messenger_dict)
-    else:
-        raise ValueError("Invalid class name in messenger_dict")
-
-
 class BaseMessageSender:
     def send_message(self, text: str):
         raise NotImplementedError
@@ -23,10 +14,13 @@ class BaseMessageSender:
     def to_dict(self):
         raise NotImplementedError
 
+    @property
+    def external_chat_id(self) -> str:
+        raise NotImplementedError
+
     @classmethod
     def from_dict(cls, data):
         raise NotImplementedError
-
 
 
 class TelegramMessageSender(BaseMessageSender):
@@ -34,6 +28,10 @@ class TelegramMessageSender(BaseMessageSender):
     def __init__(self, chat_id: int, update_message_id: int):
         self.chat_id = chat_id
         self.update_message_id = update_message_id
+
+    @property
+    def external_chat_id(self) -> str:
+        return str(self.chat_id)
 
     def send_message(self, text: str):
         asyncio.run(telegram.Bot(settings.telegram_bot_token).sendMessage(chat_id=self.chat_id, text=text))
@@ -87,6 +85,10 @@ class DiscordMessageSender(BaseMessageSender):
         channel = await self._get_channel()
         await channel.send(text)
 
+    @property
+    def external_chat_id(self) -> str:
+        return str(self.channel_id)
+
     def send_message(self, text: str):
         asyncio.run(self._send_message(text))
 
@@ -110,3 +112,12 @@ class DiscordMessageSender(BaseMessageSender):
     @classmethod
     def from_dict(cls, data):
         return cls(channel_id=data['channel_id'], update_message_id=data['update_message_id'])
+
+
+def messenger_factory(messenger_dict) -> BaseMessageSender:
+    if messenger_dict['class'] == TelegramMessageSender.__name__:
+        return TelegramMessageSender.from_dict(messenger_dict)
+    elif messenger_dict['class'] == DiscordMessageSender.__name__:
+        return DiscordMessageSender.from_dict(messenger_dict)
+    else:
+        raise ValueError("Invalid class name in messenger_dict")
